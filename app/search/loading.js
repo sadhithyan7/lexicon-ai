@@ -1,40 +1,31 @@
 /*
-  Required Suspense boundary for app/search/page.js.
+  app/search/loading.js — Suspense boundary for Search page.
 
-  When page.js calls useSearchParams(), React needs a Suspense boundary
-  above it. Next.js automatically wraps page.js in this loading.js file's
-  Suspense boundary — no manual <Suspense> tag needed in page.js.
-
-  This is shown only during the initial hydration (very brief, usually
-  under 100ms). The real 'loading' UX (2-second skeleton) is managed by
-  useState inside page.js itself.
+  Next.js App Router requires a Suspense boundary above any component
+  that calls useSearchParams(). This loading.js file is automatically
+  used as that boundary. It shows during the initial render before the
+  client component hydrates.
 */
 export default function SearchLoading() {
   return (
-    <div className="min-h-screen bg-ink">
-      <div className="max-w-2xl mx-auto px-5 sm:px-8 py-12 sm:py-16">
-
-        {/* Header skeleton */}
-        <div className="mb-10 space-y-4">
-          <span className="skeleton h-4 w-28 block" />
-          <span className="skeleton h-9 w-52 block" />
-          <span className="skeleton h-4 w-44 block" />
-        </div>
-
-        {/* Three result row skeletons */}
-        <ul className="divide-y divide-faded-ink/20" aria-hidden="true">
-          {[72, 52, 64].map((w, i) => (
-            <li key={i} className="flex items-start justify-between gap-4 py-4">
-              <div className="flex-1 space-y-2.5">
-                <span className="skeleton h-4 block" style={{ width: `${w}%` }} />
-                <span className="skeleton h-3 w-2/5 block" />
-                <span className="skeleton h-3 w-full block" />
-              </div>
-              <span className="skeleton h-4 w-10 shrink-0 mt-0.5 block" />
-            </li>
-          ))}
-        </ul>
-
+    <div className="px-8 py-8 max-w-3xl">
+      <div className="skeleton h-9 w-28 mb-6 rounded-md" />
+      <div className="panel p-4 mb-5">
+        <div className="skeleton h-10 w-full rounded-md" />
+      </div>
+      <div className="flex gap-2 mb-5">
+        {[1, 2, 3].map((i) => (
+          <span key={i} className="skeleton h-7 w-20 rounded-full" />
+        ))}
+      </div>
+      <div className="panel p-0 overflow-hidden">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="ledger-row px-5 py-4 space-y-2">
+            <span className="skeleton h-4 w-2/3 block" />
+            <span className="skeleton h-3 w-1/3 block" />
+            <span className="skeleton h-3 w-full block" />
+          </div>
+        ))}
       </div>
     </div>
   );

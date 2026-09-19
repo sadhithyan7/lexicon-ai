@@ -1,146 +1,232 @@
 "use client";
 
+/*
+  Dashboard — app/page.js
+  
+  The root page. Shows:
+  1. Greeting + stat strip (3 numbers)
+  2. Quick-ask card with the gold glow effect
+  3. Recently saved panel (ledger rows)
+  4. Suggested topics (pills)
+
+  All data is mock for now — Task 10 will replace with real API calls.
+  The state machine structure (status / loading / empty / error) is
+  already in place so wiring real data is a drop-in swap.
+*/
+
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Panel from "@/components/Panel";
 
-export default function Home() {
+/* ── Mock data ── */
+const STATS = [
+  { label: "Pages saved",    value: 248 },
+  { label: "Saved this week", value: 12  },
+  { label: "Questions asked", value: 34  },
+];
+
+const RECENT_PAGES = [
+  { id: 1, title: "How React Works",                           source: "react.dev/learn",                      ago: "2h ago"   },
+  { id: 2, title: "PostgreSQL Vector Search with pgvector",   source: "database.com/docs/extensions/pgvector", ago: "5h ago"   },
+  { id: 3, title: "Hybrid Search: Combining BM25 and Embeddings", source: "blog.search-indexes.com",          ago: "Yesterday" },
+  { id: 4, title: "Chrome Extension Manifest V3 Migration Guide", source: "chromium.dev/extensions/mv3",      ago: "Yesterday" },
+  { id: 5, title: "Gemini Embedding API Reference",           source: "ai.dev/docs/embeddings",               ago: "2 days ago" },
+];
+
+const SUGGESTED_TOPICS = [
+  "hybrid search", "pgvector", "service workers", "RAG", "citations",
+];
+
+export default function Dashboard() {
   const router = useRouter();
-
-  /*
-    Three pieces of state on the home page:
-    1. isFocused: drives the glow opacity (same as before)
-    2. query: controlled input value — we own the string so we can
-       pass it to router.push on submit
-    3. status: 'idle' | 'loading' — while 'loading', the button gives
-       immediate feedback (200ms rule from the UX bar) before Next.js
-       finishes preparing the next route
-  */
-  const [isFocused, setIsFocused] = useState(false);
   const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("idle");
+  const [isFocused, setIsFocused] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const isLoading = status === "loading";
-
-  /*
-    handleSearch: fires on button click or Enter key.
-    Sets loading immediately (instant feedback), then navigates.
-    The loading state shows on the button itself — the hero doesn't
-    change, because the page transition happens almost instantly.
-  */
-  function handleSearch() {
+  function handleSearch(e) {
+    e.preventDefault();
     const q = query.trim();
-    if (!q || isLoading) return;
-    setStatus("loading");
-    // router.push triggers navigation to /search; the loading state
-    // on the button gives feedback during that transition
+    if (!q || isSearching) return;
+    setIsSearching(true);
     router.push(`/search?q=${encodeURIComponent(q)}`);
   }
 
-  function handleKeyDown(e) {
-    if (e.key === "Enter") handleSearch();
+  function handleTopicClick(topic) {
+    router.push(`/search?q=${encodeURIComponent(topic)}`);
   }
 
+  const hour = new Date().getHours();
+  const greeting =
+    hour < 12 ? "Good morning" :
+    hour < 18 ? "Good afternoon" : "Good evening";
+
   return (
-    <main className="min-h-screen bg-cover flex flex-col items-center justify-center px-5 sm:px-8">
-      <div className="w-full max-w-xl flex flex-col items-center text-center gap-5 sm:gap-6">
-
-        <h1 className="font-display font-semibold text-parchment leading-none tracking-tight text-[3.5rem] sm:text-[4.5rem]">
-          Lexicon
+    <div className="px-8 py-8 max-w-3xl">
+      {/* ── Page header ── */}
+      <div className="mb-8">
+        <h1 className="font-display font-semibold text-parchment text-3xl mb-1">
+          {greeting}
         </h1>
-
-        <p className="font-sans text-parchment text-base sm:text-lg leading-relaxed max-w-sm">
-          Your personal knowledge library
+        <p className="font-sans text-faded-ink text-sm">
+          Here&apos;s what&apos;s new in your library.
         </p>
+      </div>
 
-        <div className="relative w-full mt-2">
-          {/* THE GLOW — glow brightens on focus, same as before */}
+      {/* ── Stat strip ── */}
+      <Panel className="p-5 mb-5 flex gap-0">
+        {STATS.map((stat, i) => (
           <div
-            aria-hidden="true"
-            className="hero-glow pointer-events-none"
-            data-focused={isFocused ? "true" : "false"}
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              width: "min(600px, 140%)",
-              height: "220px",
-              background:
-                "radial-gradient(ellipse at center, #C9A227 0%, transparent 65%)",
-              zIndex: 0,
-            }}
-          />
+            key={stat.label}
+            className={`flex-1 px-4 ${i > 0 ? "border-l border-faded-ink/15" : ""}`}
+          >
+            <p className="font-display font-semibold text-parchment text-3xl leading-none mb-1">
+              {stat.value}
+            </p>
+            <p className="font-sans text-faded-ink text-xs">{stat.label}</p>
+          </div>
+        ))}
+      </Panel>
 
-          <div className="relative z-10 flex gap-2">
-            {/*
-              Controlled input: value={query} + onChange keeps the
-              string in React state so we can pass it to router.push.
-              Without this, we'd need a ref to read the value on submit.
-            */}
+      {/* ── Quick-ask card with glow ── */}
+      <Panel className="p-5 mb-5 relative overflow-hidden">
+        {/* The one gold glow — atmospheric, not decorative noise */}
+        <div
+          aria-hidden="true"
+          className="hero-glow pointer-events-none absolute"
+          data-focused={isFocused ? "true" : "false"}
+          style={{
+            top: "50%",
+            left: "40%",
+            transform: "translate(-50%, -50%)",
+            width: "400px",
+            height: "180px",
+            background: "radial-gradient(ellipse at center, #C9A227 0%, transparent 65%)",
+            zIndex: 0,
+          }}
+        />
+        <form
+          onSubmit={handleSearch}
+          className="relative z-10 flex gap-2"
+          role="search"
+        >
+          {/* Search icon inside the input */}
+          <div className="relative flex-1">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              width="15"
+              height="15"
+              viewBox="0 0 24 24"
+              fill="none"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" stroke="#9C96A8" strokeWidth="1.75" />
+              <path d="M16.5 16.5L21 21" stroke="#9C96A8" strokeWidth="1.75" strokeLinecap="round" />
+            </svg>
             <input
-              id="hero-search"
+              id="dashboard-search"
               type="search"
               autoComplete="off"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleKeyDown}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
-              placeholder="Search your saved pages, or ask a question…"
-              disabled={isLoading}
+              placeholder="Ask your library anything…"
+              disabled={isSearching}
               className="
-                flex-1 min-w-0
-                bg-ink border border-faded-ink
+                w-full bg-ink/70 border border-faded-ink/20
                 text-parchment placeholder:text-faded-ink
                 font-sans text-sm
-                px-4 py-3
-                rounded-lg
-                focus-visible:border-gold-leaf
+                pl-9 pr-4 py-2.5
+                rounded-md
+                focus-visible:border-gold-leaf/60
                 transition-colors duration-200
-                disabled:opacity-60 disabled:cursor-not-allowed
+                disabled:opacity-60
               "
             />
-
-            {/*
-              The button has two states:
-              - Idle: "Search" — primary action label
-              - Loading: spinner + "Searching…" — immediate feedback
-              Both use the same layout so the button doesn't resize.
-            */}
-            <button
-              type="button"
-              id="hero-search-btn"
-              onClick={handleSearch}
-              disabled={isLoading || !query.trim()}
-              className="
-                bg-gold-leaf text-ink
-                font-sans font-medium text-sm
-                px-5 py-3
-                rounded-lg
-                shrink-0
-                hover:bg-[#b8911f]
-                transition-colors duration-200
-                disabled:opacity-60 disabled:cursor-not-allowed
-                flex items-center gap-2
-              "
-            >
-              {isLoading ? (
-                <>
-                  <span className="spinner" aria-hidden="true" />
-                  <span>Searching…</span>
-                </>
-              ) : (
-                "Search"
-              )}
-            </button>
           </div>
+          <button
+            type="submit"
+            disabled={isSearching || !query.trim()}
+            className="
+              bg-gold-leaf text-ink
+              font-sans font-medium text-sm
+              px-4 py-2.5 rounded-md shrink-0
+              hover:bg-[#b8911f]
+              transition-colors duration-200
+              disabled:opacity-50
+              flex items-center gap-2
+            "
+          >
+            {isSearching ? (
+              <><span className="spinner" style={{ width: 14, height: 14 }} /><span>Asking…</span></>
+            ) : "Ask"}
+          </button>
+        </form>
+      </Panel>
+
+      {/* ── Recently saved ── */}
+      <Panel className="p-0 mb-5 overflow-hidden">
+        {/* Panel header */}
+        <div className="flex items-center justify-between px-5 py-4">
+          <h2 className="font-sans font-semibold text-parchment text-sm">
+            Recently saved
+          </h2>
+          <Link
+            href="/history"
+            className="font-sans text-xs text-faded-ink hover:text-parchment transition-colors"
+          >
+            View all
+          </Link>
         </div>
 
-        <p className="font-sans text-faded-ink text-sm leading-relaxed">
-          Start typing to search your saved pages, or ask a question.
-        </p>
+        {/* Ledger rows — hairline dividers, no per-row background */}
+        <ul role="list">
+          {RECENT_PAGES.map((page) => (
+            <li
+              key={page.id}
+              className="ledger-row flex items-center justify-between gap-4 px-5 py-3 hover:bg-cover-raised/40 transition-colors duration-150"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="font-sans font-medium text-parchment text-sm leading-snug truncate">
+                  {page.title}
+                </p>
+                <p className="font-sans text-xs text-faded-ink truncate mt-0.5">
+                  {page.source}
+                </p>
+              </div>
+              <span className="font-sans text-xs text-faded-ink shrink-0">
+                {page.ago}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </Panel>
 
+      {/* ── Suggested topics ── */}
+      <div>
+        <p className="font-sans text-xs text-faded-ink mb-3 uppercase tracking-widest">
+          Suggested topics
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {SUGGESTED_TOPICS.map((topic) => (
+            <button
+              key={topic}
+              type="button"
+              onClick={() => handleTopicClick(topic)}
+              className="
+                font-sans text-xs text-faded-ink
+                bg-cover-raised border border-faded-ink/20
+                px-3 py-1.5 rounded-full
+                hover:text-parchment hover:border-faded-ink/40
+                transition-colors duration-150
+              "
+            >
+              {topic}
+            </button>
+          ))}
+        </div>
       </div>
-    </main>
+    </div>
   );
 }

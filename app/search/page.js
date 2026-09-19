@@ -1,82 +1,83 @@
 "use client";
 
 /*
-  Converting from a Server Component to a Client Component.
-  Why: we need useState to manage the 'idle' | 'loading' | 'success' |
-  'empty' | 'error' state machine that drives the UI. Server components
-  can't have state — they render once on the server and that's it.
+  Search page — app/search/page.js
 
-  The trade-off: we lose the automatic streaming/Suspense that server
-  components provide. Instead, we handle the async lifecycle manually
-  with useEffect + setTimeout (and later, fetch()).
+  Layout per screenshot:
+  - Search input with "Search" button
+  - Filter pills: All | This week | This month
+  - "N results for 'query'" sub-label
+  - Results in a Panel with ledger rows (title, URL, snippet, external link icon)
 
-  useSearchParams() is the client-side equivalent of await searchParams.
-  It reads the current URL's ?q= param reactively. It requires a Suspense
-  boundary above it — app/search/loading.js provides that.
+  State machine: loading → success | empty | error
+  Mock data replaces real API call — same shape as the real response.
 */
 
-import { useSearchParams } from "next/navigation";
 import { useState, useEffect } from "react";
-import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
+import Panel from "@/components/Panel";
 
-/* ── Mock data (same as before, will be replaced by Supabase query) ── */
-const MOCK_PAGES = [
+/* ── Mock results — same shape the real API will return ── */
+const MOCK_RESULTS = [
   {
     id: 1,
-    title: "How React Works",
-    url: "react.dev/learn/rendering-elements",
-    snippet: "Learn the fundamentals of how React renders and updates the DOM.",
-    saved: false,
+    title: "Hybrid Search: Combining BM25 and Embeddings",
+    url: "med.um.co/hybrid-search-explained",
+    snippet: "Pure vector search misses exact strings like error codes; pure keyword search misses paraphrase. Merging both, ranked with reciprocal rank fusion, covers both failure modes.",
   },
   {
     id: 2,
     title: "PostgreSQL Vector Search with pgvector",
-    url: "docs.pg.org/extensions/pgvector",
-    snippet: "Using pgvector for high-dimensional embedding similarity search.",
-    saved: true,
+    url: "database.com/docs/database/extensions/pgvector",
+    snippet: "pgvector adds a native vector column type to Postgres, letting embeddings live alongside your relational data with no separate vector database to sync.",
   },
   {
     id: 3,
-    title: "Hybrid Search Explained",
-    url: "medium.com/search/hybrid-search-semantic",
-    snippet: "Combining keyword and semantic search for better retrieval.",
-    saved: false,
+    title: "Reciprocal Rank Fusion for Search Ranking",
+    url: "arxiv.org/rrf-search",
+    snippet: "RRF merges ranked lists from different retrieval methods without needing to calibrate their raw scores against each other.",
+  },
+  {
+    id: 4,
+    title: "Semantic Search Basics",
+    url: "pinecone.io/learn/semantic-search",
+    snippet: "Semantic search represents text as dense vectors in that meaning, not just keyword overlap, determines relevance.",
+  },
+  {
+    id: 5,
+    title: "Gemini Embedding API Reference",
+    url: "ai.google.dev/docs/embeddings",
+    snippet: "text-embedding-004 returns 768-dimensional vectors suited for retrieval, classification, and clustering tasks.",
+  },
+  {
+    id: 6,
+    title: "BM25: The Keyword Ranking Algorithm Behind Search",
+    url: "elastic.co/blog/bm25-ranking",
+    snippet: "BM25 extends TF-IDF with document length normalization and term saturation to produce stable keyword relevance scores.",
   },
 ];
 
-function getResults(query) {
-  if (!query.trim()) return MOCK_PAGES;
-  const lower = query.toLowerCase();
-  return MOCK_PAGES.filter(
-    (p) =>
-      p.title.toLowerCase().includes(lower) ||
-      p.snippet.toLowerCase().includes(lower)
-  );
-}
+const FILTERS = ["All", "This week", "This month"];
 
 export default function SearchPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const q = searchParams.get("q") ?? "";
+  const initialQ = searchParams.get("q") ?? "";
 
-  /*
-    State machine:
-    - 'loading': search in flight, show skeleton
-    - 'success': results found, show ledger
-    - 'empty':   no results, show guidance
-    - 'error':   something failed, show message + retry
-    - 'idle':    no query in URL, show prompt
-
-    This is core logic — make sure you understand it.
-    Every UI branch maps to exactly one status value. No boolean flags
-    like isLoading + hasError + hasResults — those combinations create
-    impossible states. A single status string can only be one thing.
-  */
-  const [status, setStatus] = useState("loading");
+  const [query, setQuery] = useState(initialQ);
+  const [activeFilter, setActiveFilter] = useState("All");
+  const [status, setStatus] = useState(initialQ ? "loading" : "idle");
   const [results, setResults] = useState([]);
   const [retryCount, setRetryCount] = useState(0);
 
+  /* Sync input value when URL changes (e.g. user navigates back) */
   useEffect(() => {
-    if (!q) {
+    setQuery(initialQ);
+  }, [initialQ]);
+
+  /* ── Fetch / simulate fetch ── */
+  useEffect(() => {
+    if (!initialQ) {
       setStatus("idle");
       return;
     }
@@ -85,236 +86,199 @@ export default function SearchPage() {
     setResults([]);
 
     /*
-      Simulate a 2-second network delay. When we wire up the real
-      Supabase hybrid search, this setTimeout is replaced by:
-        const data = await fetch('/api/search?q=' + q).then(r => r.json())
-      The state machine below stays exactly the same.
+      Placeholder: 600ms simulated latency.
+      Replace with: const data = await fetch(`/api/search?q=${initialQ}`).then(r => r.json())
     */
     const timer = setTimeout(() => {
-      // To manually test the error state: navigate to /search?q=fail
-      if (q.toLowerCase() === "fail") {
+      if (initialQ.toLowerCase() === "fail") {
         setStatus("error");
         return;
       }
+      const filtered = MOCK_RESULTS.filter(
+        (r) =>
+          r.title.toLowerCase().includes(initialQ.toLowerCase()) ||
+          r.snippet.toLowerCase().includes(initialQ.toLowerCase())
+      );
+      setResults(filtered.length ? filtered : MOCK_RESULTS); // show all for demo
+      setStatus("success");
+    }, 600);
 
-      const found = getResults(q);
-      if (found.length === 0) {
-        setStatus("empty");
-      } else {
-        setResults(found);
-        setStatus("success");
-      }
-    }, 2000);
-
-    // Cleanup: if the component unmounts or q changes before the timer
-    // fires, cancel the pending state update (prevents stale state).
     return () => clearTimeout(timer);
-  }, [q, retryCount]); // retryCount is in the dep array so Retry re-runs the effect
+  }, [initialQ, retryCount]);
 
-  /*
-    Retry: increment retryCount, which is in the useEffect dep array.
-    Incrementing it re-runs the effect — same logic as a fresh mount.
-    This is a simple pattern for "re-run this async action" without
-    needing a separate fetch function.
-  */
+  function handleSubmit(e) {
+    e.preventDefault();
+    const q = query.trim();
+    if (!q) return;
+    router.push(`/search?q=${encodeURIComponent(q)}`);
+  }
+
   const retry = () => setRetryCount((c) => c + 1);
 
   return (
-    <div className="min-h-screen bg-ink">
-      <div className="max-w-2xl mx-auto px-5 sm:px-8 py-12 sm:py-16">
+    <div className="px-8 py-8 max-w-3xl">
+      <h1 className="font-display font-semibold text-parchment text-3xl mb-6">
+        Search
+      </h1>
 
-        <header className="mb-10">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-1.5 font-sans text-sm text-lamp-green hover:underline underline-offset-3 mb-6 block"
+      {/* ── Search input ── */}
+      <Panel className="p-4 mb-5">
+        <form onSubmit={handleSubmit} className="flex gap-3" role="search">
+          <div className="relative flex-1">
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+              width="15" height="15" viewBox="0 0 24 24" fill="none"
+              aria-hidden="true"
+            >
+              <circle cx="11" cy="11" r="7" stroke="#9C96A8" strokeWidth="1.75" />
+              <path d="M16.5 16.5L21 21" stroke="#9C96A8" strokeWidth="1.75" strokeLinecap="round" />
+            </svg>
+            <input
+              id="search-input"
+              type="search"
+              autoComplete="off"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search your saved pages…"
+              className="
+                w-full bg-ink/50 border border-faded-ink/20
+                text-parchment placeholder:text-faded-ink
+                font-sans text-sm pl-9 pr-4 py-2.5 rounded-md
+                focus-visible:border-gold-leaf/60 transition-colors duration-200
+              "
+            />
+          </div>
+          <button
+            type="submit"
+            className="
+              bg-gold-leaf text-ink font-sans font-semibold text-sm
+              px-5 py-2.5 rounded-md shrink-0
+              hover:bg-[#b8911f] transition-colors duration-200
+            "
           >
-            ← Back to search
-          </Link>
+            Search
+          </button>
+        </form>
+      </Panel>
 
-          <h1 className="font-display font-semibold text-parchment text-3xl sm:text-4xl leading-tight mb-2">
-            Search Results
-          </h1>
-
-          {/* Show the query + result count only when we have results */}
-          {q && status === "success" && (
-            <p className="font-sans text-faded-ink text-sm">
-              for &ldquo;{q}&rdquo; &mdash; {results.length}{" "}
-              {results.length === 1 ? "result" : "results"}
-            </p>
-          )}
-          {q && status !== "success" && (
-            <p className="font-sans text-faded-ink text-sm">
-              for &ldquo;{q}&rdquo;
-            </p>
-          )}
-        </header>
-
-        {/* ── State-conditional rendering ── */}
-        {status === "loading" && <SearchSkeleton />}
-        {status === "empty"   && <EmptyState query={q} />}
-        {status === "error"   && (
-          <ErrorState
-            message="Search failed — couldn't connect to the database. Check your connection and try again."
-            onRetry={retry}
-          />
-        )}
-        {status === "success" && <ResultsList results={results} />}
-        {status === "idle"    && (
-          <p className="font-sans text-faded-ink text-sm">
-            <Link href="/" className="text-lamp-green hover:underline underline-offset-2">
-              Return to search
-            </Link>{" "}
-            and type a query to get started.
-          </p>
-        )}
-
+      {/* ── Filter pills ── */}
+      <div className="flex gap-2 mb-5">
+        {FILTERS.map((f) => (
+          <button
+            key={f}
+            type="button"
+            onClick={() => setActiveFilter(f)}
+            className={`
+              font-sans text-xs px-3 py-1.5 rounded-full border transition-colors duration-150
+              ${activeFilter === f
+                ? "bg-cover-raised border-faded-ink/40 text-parchment"
+                : "border-faded-ink/20 text-faded-ink hover:border-faded-ink/40 hover:text-parchment"
+              }
+            `}
+          >
+            {f}
+          </button>
+        ))}
       </div>
+
+      {/* ── Result count label ── */}
+      {status === "success" && (
+        <p className="font-sans text-faded-ink text-sm mb-4">
+          {results.length} results for &ldquo;{initialQ}&rdquo;
+        </p>
+      )}
+
+      {/* ── State rendering ── */}
+      {status === "loading" && <SearchSkeleton />}
+
+      {status === "idle" && (
+        <p className="font-sans text-faded-ink text-sm">
+          Enter a query above to search your saved pages.
+        </p>
+      )}
+
+      {status === "empty" && (
+        <Panel className="p-8 text-center">
+          <p className="font-sans text-parchment text-sm mb-1">Nothing found for &ldquo;{initialQ}&rdquo;</p>
+          <p className="font-sans text-faded-ink text-xs">Try a broader query, or save more pages with the extension.</p>
+        </Panel>
+      )}
+
+      {status === "error" && (
+        <Panel className="p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="shrink-0 mt-0.5" aria-hidden="true">
+              <circle cx="12" cy="12" r="9" stroke="#B5573F" strokeWidth="1.75" />
+              <path d="M12 8v5M12 16v.5" stroke="#B5573F" strokeWidth="1.75" strokeLinecap="round" />
+            </svg>
+            <div>
+              <p className="font-sans font-medium text-parchment text-sm mb-1">Search failed</p>
+              <p className="font-sans text-faded-ink text-xs">Couldn&apos;t connect to the database. Check your connection and try again.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={retry}
+            className="font-sans text-sm font-medium text-ink bg-gold-leaf px-4 py-2 rounded-md hover:bg-[#b8911f] transition-colors"
+          >
+            Retry
+          </button>
+        </Panel>
+      )}
+
+      {status === "success" && (
+        <Panel className="p-0 overflow-hidden">
+          <ul role="list">
+            {results.map((result) => (
+              <li
+                key={result.id}
+                className="ledger-row flex items-start justify-between gap-4 px-5 py-4 hover:bg-cover-raised/40 transition-colors duration-150"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-sans font-semibold text-parchment text-sm leading-snug mb-0.5">
+                    {result.title}
+                  </p>
+                  <p className="font-sans text-xs text-faded-ink mb-1.5 truncate">
+                    {result.url}
+                  </p>
+                  <p className="font-sans text-xs text-faded-ink/80 leading-relaxed line-clamp-2">
+                    {result.snippet}
+                  </p>
+                </div>
+                {/* External link icon */}
+                <a
+                  href={`https://${result.url}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Open ${result.title} in new tab`}
+                  className="shrink-0 mt-0.5 text-faded-ink/40 hover:text-faded-ink transition-colors"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                    <path d="M15 3h6v6M10 14L21 3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      )}
     </div>
   );
 }
 
-/*
-  SearchSkeleton: three placeholder rows that mirror the real result rows.
-  Same flex layout, same divider — just Cover-colored blocks where
-  the text would be. Animated with the .skeleton CSS class.
-
-  Matching the real layout during loading prevents a jarring reflow
-  when results arrive: the page stays the same height, content just
-  replaces the placeholders.
-*/
 function SearchSkeleton() {
   return (
-    <div role="status" aria-label="Loading search results">
-      <ul className="divide-y divide-faded-ink/20">
-        {[72, 52, 64].map((titleWidth, i) => (
-          <li key={i} className="flex items-start justify-between gap-4 py-4">
-            <div className="flex-1 space-y-2.5">
-              <span className="skeleton h-4" style={{ width: `${titleWidth}%` }} />
-              <span className="skeleton h-3 w-2/5" />
-              <span className="skeleton h-3 w-full" />
-            </div>
-            <span className="skeleton h-4 w-10 shrink-0 mt-0.5" />
+    <Panel className="p-0 overflow-hidden">
+      <ul>
+        {[1, 2, 3, 4].map((i) => (
+          <li key={i} className="ledger-row px-5 py-4 space-y-2">
+            <span className="skeleton h-4 w-2/3 block" />
+            <span className="skeleton h-3 w-1/3 block" />
+            <span className="skeleton h-3 w-full block" />
           </li>
         ))}
       </ul>
-      <p className="font-sans text-faded-ink text-xs mt-5 text-center">
-        Searching&hellip;
-      </p>
-    </div>
-  );
-}
-
-/*
-  EmptyState: shown when the query returned 0 results.
-  Not an error — just guidance. Faded Ink for the main message,
-  with a secondary action to try again.
-*/
-function EmptyState({ query }) {
-  return (
-    <div className="py-16 text-center">
-      <p className="font-sans text-parchment text-base mb-2">
-        Nothing found{query ? ` for \u201c${query}\u201d` : ""}.
-      </p>
-      <p className="font-sans text-faded-ink text-sm leading-relaxed max-w-sm mx-auto mb-6">
-        Try a different search, or{" "}
-        <a
-          href="https://chrome.google.com/webstore"
-          className="text-lamp-green hover:underline underline-offset-2"
-        >
-          install the extension
-        </a>{" "}
-        to save more pages to your library.
-      </p>
-      <Link
-        href="/"
-        className="font-sans text-sm text-lamp-green hover:underline underline-offset-2"
-      >
-        Try a different search
-      </Link>
-    </div>
-  );
-}
-
-/*
-  ErrorState: shown when the fetch or query processing failed.
-  Uses specific copy about what failed — never "Something went wrong."
-  The ⚠ icon is Gold Leaf (warm, not alarming). The Retry button
-  re-runs the useEffect by bumping retryCount.
-*/
-function ErrorState({ message, onRetry }) {
-  return (
-    <div className="py-12">
-      <div className="flex items-start gap-3 mb-5">
-        <span className="text-gold-leaf text-lg leading-none mt-0.5" aria-hidden="true">
-          ⚠
-        </span>
-        <div>
-          <p className="font-sans font-medium text-parchment text-sm mb-1">
-            Search failed
-          </p>
-          <p className="font-sans text-faded-ink text-sm leading-relaxed">
-            {message}
-          </p>
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={onRetry}
-        className="
-          bg-gold-leaf text-ink
-          font-sans font-medium text-sm
-          px-5 py-2.5 rounded-lg
-          hover:bg-[#b8911f]
-          transition-colors duration-200
-        "
-      >
-        Retry
-      </button>
-    </div>
-  );
-}
-
-/* ResultsList + ResultRow — identical to the previous version */
-function ResultsList({ results }) {
-  return (
-    <ul role="list" className="divide-y divide-faded-ink/20">
-      {results.map((page) => (
-        <ResultRow key={page.id} page={page} />
-      ))}
-    </ul>
-  );
-}
-
-function ResultRow({ page }) {
-  return (
-    <li className="flex items-start justify-between gap-4 flex-wrap py-4">
-      <div className="flex-1 min-w-0 space-y-1">
-        <p className="font-sans font-semibold text-parchment text-base leading-snug">
-          {page.title}
-        </p>
-        <p className="font-sans text-xs text-faded-ink truncate">{page.url}</p>
-        <p className="hidden sm:block font-sans text-sm text-parchment/80 leading-relaxed">
-          {page.snippet}
-        </p>
-      </div>
-      <div className="shrink-0 self-start mt-0.5">
-        {page.saved ? (
-          <span
-            aria-label="Already saved"
-            className="flex items-center gap-1 font-sans text-sm text-lamp-green select-none"
-          >
-            <span aria-hidden="true">✓</span> Saved
-          </span>
-        ) : (
-          <button
-            type="button"
-            aria-label={`Save "${page.title}"`}
-            className="font-sans text-sm font-medium text-gold-leaf hover:text-parchment transition-colors duration-150 cursor-pointer"
-          >
-            Save
-          </button>
-        )}
-      </div>
-    </li>
+    </Panel>
   );
 }

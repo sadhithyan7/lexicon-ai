@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lexicon</title>
+
+  <!--
+    Fraunces (display serif) and IBM Plex Sans (body) — same pair as the web app.
+    Loading from Google Fonts CDN, which requires the fonts.googleapis.com and
+    fonts.gstatic.com host_permissions declared in manifest.json.
+  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap"
+    rel="stylesheet"
+  />
+
+  <style>
+    /*
+      Design system color tokens — identical to the web app's @theme block.
+      Using CSS custom properties so they're easy to update in one place.
+    */
+    :root {
+      --ink:        #16141C;
+      --cover:      #201D28;
+      --parchment:  #EDE7D8;
+      --faded-ink:  #9C96A8;
+      --gold-leaf:  #C9A227;
+      --lamp-green: #3F7D69;
+    }
+
+    /* ── Reset ── */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    /*
+      Fixed popup dimensions: 400×300px is the standard extension popup size.
+      Chrome enforces a minimum of 25×25 and a soft maximum of 800×600;
+      400×300 hits the sweet spot for a minimal save UI.
+    */
+    html, body {
+      width: 400px;
+      height: 300px;
+      overflow: hidden;
+      background-color: var(--ink);
+      color: var(--parchment);
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    .popup {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      padding: 16px;
+      gap: 12px;
+    }
+
+    /* ── Header ── */
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header__logo {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 20px;
+      font-weight: 600;
+      color: var(--parchment);
+      letter-spacing: -0.01em;
+    }
+
+    /*
+      Status dot: green = already saved in this session, gray = not yet saved.
+      Uses a small circle that updates via JS adding/removing .saved class.
+    */
+    .header__status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--faded-ink);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--faded-ink);
+      flex-shrink: 0;
+    }
+
+    .status-dot.saved {
+      background-color: var(--lamp-green);
+    }
+
+    /* ── Page info section ── */
+    .page-info {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow: hidden;
+    }
+
+    .page-title {
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--parchment);
+      line-height: 1.4;
+      /* Clamp to two lines — long titles should truncate, not overflow */
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .page-url {
+      font-size: 11px;
+      color: var(--faded-ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .page-meta {
+      font-size: 11px;
+      color: var(--faded-ink);
+    }
+
+    /* ── Divider ── */
+    .divider {
+      height: 1px;
+      background-color: var(--faded-ink);
+      opacity: 0.2;
+    }
+
+    /* ── Action button ── */
+    /*
+      Full width minus the 16px padding on each side (already applied via
+      the parent .popup padding). No nested padding needed.
+    */
+    #save-btn {
+      width: 100%;
+      padding: 10px 0;
+      border: none;
+      border-radius: 8px;
+      font-family: "IBM Plex Sans", system-ui, sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    #save-btn.state-idle {
+      background-color: var(--gold-leaf);
+      color: var(--ink);
+    }
+
+    #save-btn.state-idle:hover {
+      background-color: #b8911f;
+    }
+
+    #save-btn.state-saving {
+      background-color: var(--faded-ink);
+      color: var(--ink);
+      cursor: not-allowed;
+    }
+
+    #save-btn.state-saved {
+      background-color: transparent;
+      color: var(--lamp-green);
+      border: 1px solid var(--lamp-green);
+      cursor: default;
+    }
+
+    /* ── Error message ── */
+    #error-msg {
+      display: none;
+      font-size: 12px;
+      color: var(--faded-ink);
+      line-height: 1.5;
+    }
+
+    #error-msg.visible {
+      display: block;
+    }
+
+    /* ── Bottom checkbox ── */
+    .auto-save-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .auto-save-row input[type="checkbox"] {
+      /* Minimal checkbox styling — keeping native for accessibility */
+      margin-top: 2px;
+      accent-color: var(--gold-leaf);
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+
+    .auto-save-row label {
+      font-size: 11px;
+      color: var(--faded-ink);
+      line-height: 1.4;
+      cursor: pointer;
+      user-select: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="popup">
+
+    <!-- ── Header ── -->
+    <header class="header">
+      <span class="header__logo">Lexicon</span>
+      <div class="header__status">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-label">Not saved</span>
+      </div>
+    </header>
+
+    <!-- ── Page info ── -->
+    <section class="page-info" aria-label="Current page">
+      <p class="page-title" id="page-title">Loading…</p>
+      <p class="page-url" id="page-url"></p>
+      <p class="page-meta" id="page-meta"></p>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- ── Action ── -->
+    <button type="button" id="save-btn" class="state-idle">
+      Save This Page
+    </button>
+
+    <!-- Error shown in place of, or below, the button -->
+    <p id="error-msg" role="alert"></p>
+
+    <!-- ── Auto-save toggle ── -->
+    <div class="auto-save-row">
+      <input type="checkbox" id="auto-save-toggle" />
+      <label for="auto-save-toggle">
+        Always save pages I read for 30+ seconds
+      </label>
+    </div>
+
+  </div>
+
+  <!--
+    No inline scripts — MV3's CSP blocks them.
+    All logic lives in popup.js, loaded here as a module.
+  -->
+  <script src="popup.js"></script>
+</body>
+</html>
