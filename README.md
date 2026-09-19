@@ -119,3 +119,33 @@ Each feature has a "why" — that's what recruiters ask about.
 ---
 
 ## 🏗 Architecture (coming)
+
+
+---
+
+## 🔗 Links
+
+- **GitHub**: github.com/sadhithyan7/lexicon
+- **Live**: (deploying after Task 9)
+- **Author**: Aravindhan S
+
+---
+
+## 📝 Notes
+
+- No login yet — every visitor sees the same demo pages (intentional for portfolio)
+- Gemini free tier: 60 req/min, 1M tokens/day
+- Each commit = one feature, read the commit message to understand the "why"
+
+---
+
+## Building This
+
+Commit history tells the story. To understand the project:
+
+1. Read this README (you're here)
+2. Check the commit log (each message explains a feature)
+3. Run `npm run dev` and try the UI
+4. Read the code — design decisions are in component props and CSS
+
+Pull requests and issues welcome if you spot bugs during the remaining tasks.
