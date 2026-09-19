@@ -71,30 +71,48 @@ export default function AskPage() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  function handleSend(e) {
+  async function handleSend(e) {
     e.preventDefault();
     const q = input.trim();
     if (!q || isGenerating) return;
 
-    const userMsg = { id: messages.length, role: "user", text: q };
+    const userMsg = { id: Date.now(), role: "user", text: q };
+    const currentHistory = [...messages];
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setIsGenerating(true);
 
-    /*
-      Simulate generation delay.
-      Real version: const data = await fetch('/api/ask', { method: 'POST', body: JSON.stringify({ q, history }) })
-    */
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ q, history: currentHistory }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || "Failed to generate response");
+      }
+
       const assistantMsg = {
-        id: messages.length + 1,
+        id: Date.now() + 1,
         role: "assistant",
-        content: [{ type: "text", text: `Here's what I found about "${q}" from your saved pages. This is a mock response — real Gemini generation will be wired in Task 10.` }],
-        sources: [],
+        content: data.content,
+        sources: data.sources || [],
       };
       setMessages((prev) => [...prev, assistantMsg]);
+    } catch (err) {
+      console.error("Error in handleSend:", err);
+      const errorMsg = {
+        id: Date.now() + 1,
+        role: "assistant",
+        content: [{ type: "text", text: `Error generating response: ${err.message}` }],
+        sources: [],
+      };
+      setMessages((prev) => [...prev, errorMsg]);
+    } finally {
       setIsGenerating(false);
-    }, 1800);
+    }
   }
 
   return (

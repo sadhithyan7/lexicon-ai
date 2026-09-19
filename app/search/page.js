@@ -75,7 +75,7 @@ export default function SearchPage() {
     setQuery(initialQ);
   }, [initialQ]);
 
-  /* ── Fetch / simulate fetch ── */
+  /* ── Fetch search results ── */
   useEffect(() => {
     if (!initialQ) {
       setStatus("idle");
@@ -85,25 +85,34 @@ export default function SearchPage() {
     setStatus("loading");
     setResults([]);
 
-    /*
-      Placeholder: 600ms simulated latency.
-      Replace with: const data = await fetch(`/api/search?q=${initialQ}`).then(r => r.json())
-    */
-    const timer = setTimeout(() => {
-      if (initialQ.toLowerCase() === "fail") {
-        setStatus("error");
-        return;
-      }
-      const filtered = MOCK_RESULTS.filter(
-        (r) =>
-          r.title.toLowerCase().includes(initialQ.toLowerCase()) ||
-          r.snippet.toLowerCase().includes(initialQ.toLowerCase())
-      );
-      setResults(filtered.length ? filtered : MOCK_RESULTS); // show all for demo
-      setStatus("success");
-    }, 600);
+    let isMounted = true;
 
-    return () => clearTimeout(timer);
+    async function doSearch() {
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(initialQ)}`);
+        const data = await res.json();
+        if (!isMounted) return;
+
+        if (!res.ok || data.error) {
+          setStatus("error");
+          return;
+        }
+
+        if (!data.results || data.results.length === 0) {
+          setStatus("empty");
+        } else {
+          setResults(data.results);
+          setStatus("success");
+        }
+      } catch (err) {
+        if (isMounted) setStatus("error");
+      }
+    }
+
+    doSearch();
+    return () => {
+      isMounted = false;
+    };
   }, [initialQ, retryCount]);
 
   function handleSubmit(e) {
