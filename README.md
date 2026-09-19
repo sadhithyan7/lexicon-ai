@@ -1,92 +1,121 @@
-# LEXICON
+# Lexicon — Personal Knowledge Engine
 
-**A Personal Knowledge Engine — Semantic Search Over Everything You Read**
+Save everything you read. Search it semantically. Get cited answers.
 
-## Problem
+## What This Is
 
-You read dozens of useful articles, papers, and blog posts every month. By next week, you've forgotten most of them. Browser bookmarks turn into an unsearchable graveyard. Search engines can't find something you've already read.
+A portfolio project: browser extension + web app + RAG pipeline.
+- **Extension**: Auto-captures pages you read
+- **Web App**: Stores them with AI embeddings; semantic + keyword search
+- **RAG**: Generates answers with source citations
 
-## Solution
-
-**Lexicon** is a full-stack AI-powered platform that automatically captures and semantically indexes everything you read, turning your digital wandering into a searchable, organized personal knowledge engine.
-
-**Core idea:** A lightweight browser extension captures pages you actually engage with (based on time spent and scroll depth, not just clicks), sends the content to a backend pipeline, and the web app becomes your interface — search in plain English, ask questions across everything you've saved, and get answers with citations that link to the exact sentence on the original page.
-
----
-
-## Key Features (Planned)
-
-- **Automatic capture** via browser extension — only saves content you actually engage with (>30s dwell time, >40% scroll depth)
-- **Hybrid search** — BM25 keyword search fused with vector similarity (pgvector) via Reciprocal Rank Fusion
-- **Reranking** — cross-encoder reranker on top 30 results before generation
-- **Sentence-level citations** — answers link directly to the exact sentence in your source (URL text fragments)
-- **On-device privacy mode** — toggle to embed everything locally (Transformers.js) for full privacy
-- **Async ingestion pipeline** — handles deduplication, chunking, boilerplate stripping, and embedding via background workers
-- **Evaluation harness** — measure retrieval quality (recall@k) across pipeline configurations
+**Status**: UI complete (Tasks 1-5). Building backend wiring (Tasks 6-8).
 
 ---
 
-## Why This Matters
+## Build Progress
 
-This isn't about building the next Readwise or competing with getrecall.ai. It's about proving I can architect and ship a **distributed AI system end-to-end**:
-
-- **MV3 service worker constraints** — extension workers die after ~30s idle; requires persisted retry queue in IndexedDB
-- **Retrieval as engineering, not magic** — hybrid search beats pure vector; measured and publishable in the README
-- **Real async architecture** — BullMQ background jobs, webhook retries, idempotent operations
-- **RAG pipeline design** — chunking strategies, embedding quality, reranking trade-offs
+| Task | Feature | Status | Commit |
+|---|---|---|---|
+| 1 | Design system (Athenaeum) | ✅ | [MILESTONE] UI Complete |
+| 2 | Homepage hero + glow | ✅ | [MILESTONE] UI Complete |
+| 3 | Search results ledger | ✅ | [MILESTONE] UI Complete |
+| 4 | Ask page with citations | ✅ | [MILESTONE] UI Complete |
+| 5 | Loading/empty/error states | ✅ | [MILESTONE] UI Complete |
+| 6 | Seed data script | 🔄 | Pending |
+| 7 | Favicon + OG tags + 404 | 🔄 | Pending |
+| 8 | Extension popup UI | 🔄 | Pending |
+| 9 | API wiring + live demo | 📝 | Pending |
 
 ---
 
 ## Tech Stack
 
-**Frontend:** Next.js 14+, TypeScript, TailwindCSS  
-**Backend:** Node.js, Fastify, BullMQ  
-**Extension:** WXT/Plasmo, MV3 Manifest  
-**AI/ML:** LangChain, Transformers.js, sentence-transformers  
-**Database:** PostgreSQL + pgvector, IndexedDB  
+| Tool | Job |
+|---|---|
+| **Next.js** (App Router, JavaScript) | Frontend + backend API |
+| **Tailwind** | Styling |
+| **Supabase** (Postgres + pgvector) | Database + vector store |
+| **Gemini API** | Embeddings + answers |
+| **MV3 Extension** | Auto-capture |
 
 ---
 
-## Architecture
+## Design System: The Athenaeum
 
-```
-Browser Extension (sensor layer)
-  ↓ (on engagement signal)
-  IndexedDB queue (persisted, retryable)
-  ↓
-Backend (Fastify + BullMQ workers)
-  ↓ (process: chunk, embed, deduplicate)
-  PostgreSQL + pgvector
-  ↓
-Web App (Next.js)
-  ↓ (hybrid search: BM25 + vector + rerank)
-  LLM generation (Claude/GPT) + citations
-```
+Six intentional color tokens + two typefaces. Built for a personal library feel, not generic SaaS.
+
+**Colors**: 
+- Ink (#16141C) — primary background
+- Cover (#201D28) — surfaces
+- Parchment (#EDE7D8) — text
+- Faded Ink (#9C96A8) — muted
+- Gold Leaf (#C9A227) — CTAs
+- Lamp Green (#3F7D69) — citations
+
+**Typography**:
+- Fraunces (display serif) — headlines, hero
+- IBM Plex Sans (body sans) — UI, content
+
+**Key Principles**:
+- One glow (Gold Leaf behind hero search only)
+- Citations as footnotes [1][2][3], not badges
+- Results as ledger (single column, hairline dividers), not cards
+- Responsive to mobile (tested 390px)
 
 ---
 
-## Status
+## Features
 
-🚧 **In Progress** — Architecture designed, scaffolding core services.
+### Built (Tasks 1-5)
+- [x] Hero search page with atmospheric glow
+- [x] Responsive design (desktop + mobile)
+- [x] Search results as single-column ledger
+- [x] Answer page with inline citations
+- [x] Loading, empty, error states (styled, not defaults)
+- [x] Design system in Tailwind
+
+### Coming (Tasks 6-8)
+- [ ] Seed data: 20-30 realistic pages
+- [ ] Favicon + OG meta tags + 404 page
+- [ ] Extension popup matching design system
+- [ ] Real API wiring: /api/save, /api/search, /api/ask
+- [ ] Extension auto-capture logic
+- [ ] Live Gemini embeddings + hybrid search
+- [ ] Rate-limit handling (429 backoff)
 
 ---
 
-## Getting Started
+## Try It Now
 
+### Development
 ```bash
-git clone https://github.com/[YOU]/lexicon.git
-cd lexicon
-
-# Detailed setup coming as components scaffold
+npm install
+npm run dev
+# Open http://localhost:3000
 ```
 
+### Test the UI
+- Homepage: search input with glow (doesn't search yet, just UI)
+- /search?q=react: shows mock results in ledger format
+- /ask?q=what%20is%20hybrid%20search: shows mock answer with citations
+- Resize to 390px: verify responsive layout
+
 ---
 
-## License
+## Interview Talking Points
 
-MIT
+Built into this project:
+
+1. **Design system thinking** — why Fraunces + IBM Plex, why the palette, why no cards
+2. **Hybrid search** — keyword + vector trade-offs
+3. **MV3 extensions** — service worker lifecycle, message passing
+4. **Postgres + pgvector** — single database, no sync complexity
+5. **RAG with citations** — functional, not decoration
+6. **Frontend completeness** — loading, empty, error states matter
+
+Each feature has a "why" — that's what recruiters ask about.
 
 ---
 
-**Author:** Adhithyan S  
-[GitHub](https://github.com/sadhithyan7) · [LinkedIn](https://linkedin.com/in/sadhithyan)
+## 🏗 Architecture (coming)
