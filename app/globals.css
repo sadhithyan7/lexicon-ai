@@ -1,0 +1,175 @@
+/*
+  Tailwind v4 uses @theme instead of tailwind.config.js for custom tokens.
+  All design-system values live here so they're co-located with the CSS
+  that actually uses them — no separate config file needed.
+*/
+@import "tailwindcss";
+
+/*
+  @theme inline tells Tailwind to generate utility classes from these
+  CSS custom properties directly. "inline" means the variables are
+  inlined into the generated utilities rather than kept as runtime vars.
+  This gives us classes like bg-ink, text-parchment, font-display, etc.
+*/
+@theme inline {
+  /* ── Color tokens: The Athenaeum palette ── */
+  --color-ink:        #16141C;   /* primary bg — warm near-black, plum undertone */
+  --color-cover:      #201D28;   /* surface/panel — one step lighter than Ink */
+  --color-parchment:  #EDE7D8;   /* primary text — warm off-white, never pure white */
+  --color-faded-ink:  #9C96A8;   /* secondary/muted text */
+  --color-gold-leaf:  #C9A227;   /* primary accent: CTAs, the one hero glow, active states */
+  --color-lamp-green: #3F7D69;   /* secondary accent: citation links, saved/success states */
+
+  /* ── Typography ── */
+  /* Fraunces: display/headline — page titles, hero line, section intros */
+  --font-display: var(--font-fraunces), Georgia, serif;
+  /* IBM Plex Sans: body/UI — buttons, inputs, result rows, citations, nav */
+  --font-sans: var(--font-ibm-plex-sans), system-ui, sans-serif;
+}
+
+/*
+  Base layer: apply the Athenaeum defaults globally so every element
+  starts from the right palette without needing explicit Tailwind classes
+  on every tag.
+*/
+@layer base {
+  html {
+    background-color: #16141C; /* --color-ink */
+    color: #EDE7D8;            /* --color-parchment */
+    /* Smooth anchor-jump scroll — used by citation [1][2][3] links on the Ask page */
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #16141C;
+    color: #EDE7D8;
+    font-family: var(--font-sans);
+    /* Prevent layout shift from scrollbar appearing/disappearing */
+    overflow-y: scroll;
+  -webkit-font-smoothing: antialiased;
+  }
+
+  /* Citation and navigation links use Lamp Green, not browser default blue */
+  a {
+    color: #3F7D69;
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /*
+    Remove the browser's default blue focus ring from click interactions.
+    :focus-visible below re-adds a Gold Leaf ring for keyboard-only navigation,
+    which is the accessibility-correct pattern — sighted mouse users don't need
+    the ring, keyboard/screen-reader users do.
+  */
+  :focus {
+    outline: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid #C9A227;
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+
+  /* Primary buttons: Gold Leaf background, Ink text */
+  button {
+    background-color: #C9A227;
+    color: #16141C;
+    font-family: var(--font-sans);
+    cursor: pointer;
+  }
+
+  button:hover {
+    background-color: #b8911f; /* slightly darker on hover — warmth, not a glow */
+  }
+
+  /* Hairline divider: Faded Ink at low opacity — the "ledger" separator */
+  hr {
+    border: none;
+    border-top: 1px solid rgba(156, 150, 168, 0.2); /* --color-faded-ink at 20% */
+  }
+}
+
+/*
+  Hero glow: the one atmospheric touch on the homepage.
+  Defined in CSS (not inline styles) so prefers-reduced-motion can
+  suppress the transition cleanly without any JavaScript check.
+  Opacity is toggled via a data-focused attribute set by React state.
+*/
+.hero-glow {
+  opacity: 0.15;
+  transition: opacity 200ms ease;
+}
+
+.hero-glow[data-focused="true"] {
+  opacity: 0.25;
+}
+
+/*
+  Respect the user's motion preference — drop the transition entirely.
+  The glow still shows at base opacity; it just doesn't animate.
+*/
+@media (prefers-reduced-motion: reduce) {
+  .hero-glow {
+    transition: none;
+  }
+}
+
+/*
+  Shimmer: the loading skeleton animation. Pulses opacity between
+  0.4 and 0.75 — dim enough to read as a placeholder, bright enough
+  to register as 'content is loading here, not gone'.
+  Used via the .skeleton class on Cover-colored placeholder blocks.
+*/
+@keyframes shimmer {
+  0%   { opacity: 0.4; }
+  50%  { opacity: 0.75; }
+  100% { opacity: 0.4; }
+}
+
+.skeleton {
+  background-color: #201D28; /* Cover — one step above Ink */
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 4px;
+  display: block;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
+    opacity: 0.5;
+  }
+}
+
+/*
+  Spinner: a rotating border-based circle for the Ask page's
+  'Generating...' state. Uses Gold Leaf for the active arc so it
+  reads as 'in progress', not 'error'.
+*/
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(201, 162, 39, 0.25); /* Gold Leaf at low opacity */
+  border-top-color: #C9A227;                  /* Gold Leaf — the moving arc */
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-top-color: rgba(201, 162, 39, 0.5);
+  }
+}
