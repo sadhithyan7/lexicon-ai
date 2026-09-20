@@ -9,53 +9,13 @@
   - "N results for 'query'" sub-label
   - Results in a Panel with ledger rows (title, URL, snippet, external link icon)
 
-  State machine: loading → success | empty | error
-  Mock data replaces real API call — same shape as the real response.
+  State machine: idle → loading → success | empty | error
+  Wired to real /api/search endpoint (Task 12).
 */
 
 import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Panel from "@/components/Panel";
-
-/* ── Mock results — same shape the real API will return ── */
-const MOCK_RESULTS = [
-  {
-    id: 1,
-    title: "Hybrid Search: Combining BM25 and Embeddings",
-    url: "med.um.co/hybrid-search-explained",
-    snippet: "Pure vector search misses exact strings like error codes; pure keyword search misses paraphrase. Merging both, ranked with reciprocal rank fusion, covers both failure modes.",
-  },
-  {
-    id: 2,
-    title: "PostgreSQL Vector Search with pgvector",
-    url: "database.com/docs/database/extensions/pgvector",
-    snippet: "pgvector adds a native vector column type to Postgres, letting embeddings live alongside your relational data with no separate vector database to sync.",
-  },
-  {
-    id: 3,
-    title: "Reciprocal Rank Fusion for Search Ranking",
-    url: "arxiv.org/rrf-search",
-    snippet: "RRF merges ranked lists from different retrieval methods without needing to calibrate their raw scores against each other.",
-  },
-  {
-    id: 4,
-    title: "Semantic Search Basics",
-    url: "pinecone.io/learn/semantic-search",
-    snippet: "Semantic search represents text as dense vectors in that meaning, not just keyword overlap, determines relevance.",
-  },
-  {
-    id: 5,
-    title: "Gemini Embedding API Reference",
-    url: "ai.google.dev/docs/embeddings",
-    snippet: "text-embedding-004 returns 768-dimensional vectors suited for retrieval, classification, and clustering tasks.",
-  },
-  {
-    id: 6,
-    title: "BM25: The Keyword Ranking Algorithm Behind Search",
-    url: "elastic.co/blog/bm25-ranking",
-    snippet: "BM25 extends TF-IDF with document length normalization and term saturation to produce stable keyword relevance scores.",
-  },
-];
 
 const FILTERS = ["All", "This week", "This month"];
 
@@ -256,7 +216,7 @@ export default function SearchPage() {
                 </div>
                 {/* External link icon */}
                 <a
-                  href={`https://${result.url}`}
+                  href={result.url}
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={`Open ${result.title} in new tab`}
