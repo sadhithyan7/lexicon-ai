@@ -5,27 +5,27 @@ Save everything you read. Search it semantically. Get cited answers.
 ## What This Is
 
 A portfolio project: browser extension + web app + RAG pipeline.
-- **Extension**: Auto-captures pages you read
-- **Web App**: Stores them with AI embeddings; semantic + keyword search
-- **RAG**: Generates answers with source citations
+- **Extension**: Auto-captures pages you read with dwell timer & Readability content extraction
+- **Web App**: Stores pages with Gemini embeddings; hybrid full-text + vector search (RRF)
+- **RAG**: Generates grounded answers with source citations using Gemini 3.6 Flash
 
-**Status**: UI complete (Tasks 1-5). Building backend wiring (Tasks 6-8).
+**Status**: 100% Feature-Complete (Tasks 1-16).
 
 ---
 
 ## Build Progress
 
-| Task | Feature | Status | Commit |
-|---|---|---|---|
-| 1 | Design system (Athenaeum) | ✅ | [MILESTONE] UI Complete |
-| 2 | Homepage hero + glow | ✅ | [MILESTONE] UI Complete |
-| 3 | Search results ledger | ✅ | [MILESTONE] UI Complete |
-| 4 | Ask page with citations | ✅ | [MILESTONE] UI Complete |
-| 5 | Loading/empty/error states | ✅ | [MILESTONE] UI Complete |
-| 6 | Seed data script | 🔄 | Pending |
-| 7 | Favicon + OG tags + 404 | 🔄 | Pending |
-| 8 | Extension popup UI | 🔄 | Pending |
-| 9 | API wiring + live demo | 📝 | Pending |
+| Task | Feature | Status |
+|---|---|---|
+| 1-5 | Design system (Athenaeum), Homepage, Search, Ask UI, States | ✅ |
+| 6-9 | Seed scripts, OG meta, Extension popup UI, Initial API wiring | ✅ |
+| 10 | Supabase schema for hybrid search (Postgres + pgvector) | ✅ |
+| 11 | `/api/save` — Gemini embeddings (768-dim) + Supabase upsert | ✅ |
+| 12 | `/api/search` — Hybrid RRF (Keyword + Vector) search | ✅ |
+| 13 | `/api/ask` — Streaming RAG generation with citations & backoff | ✅ |
+| 14 | Multi-turn RAG conversation & citation parsing | ✅ |
+| 15 | Chrome MV3 Auto-capture extension (dwell timer + Readability) | ✅ |
+| 16 | Settings wiring, Health check API, Export API, Extension messaging | ✅ |
 
 ---
 
@@ -33,11 +33,11 @@ A portfolio project: browser extension + web app + RAG pipeline.
 
 | Tool | Job |
 |---|---|
-| **Next.js** (App Router, JavaScript) | Frontend + backend API |
-| **Tailwind** | Styling |
+| **Next.js 16** (App Router, JavaScript) | Frontend + backend API |
+| **Tailwind CSS** | Design system styling |
 | **Supabase** (Postgres + pgvector) | Database + vector store |
-| **Gemini API** | Embeddings + answers |
-| **MV3 Extension** | Auto-capture |
+| **Gemini API** (`gemini-3.6-flash`, `gemini-embedding-2`) | Embeddings + RAG answers |
+| **MV3 Extension** (Manifest V3) | Dwell-based auto-capture |
 
 ---
 
@@ -46,106 +46,37 @@ A portfolio project: browser extension + web app + RAG pipeline.
 Six intentional color tokens + two typefaces. Built for a personal library feel, not generic SaaS.
 
 **Colors**: 
-- Ink (#16141C) — primary background
-- Cover (#201D28) — surfaces
-- Parchment (#EDE7D8) — text
-- Faded Ink (#9C96A8) — muted
-- Gold Leaf (#C9A227) — CTAs
-- Lamp Green (#3F7D69) — citations
+- Ink (`#16141C`) — primary background
+- Cover (`#201D28`) — surfaces
+- Parchment (`#EDE7D8`) — text
+- Faded Ink (`#9C96A8`) — muted
+- Gold Leaf (`#C9A227`) — CTAs
+- Lamp Green (`#3F7D69`) — citations
 
 **Typography**:
 - Fraunces (display serif) — headlines, hero
 - IBM Plex Sans (body sans) — UI, content
 
-**Key Principles**:
-- One glow (Gold Leaf behind hero search only)
-- Citations as footnotes [1][2][3], not badges
-- Results as ledger (single column, hairline dividers), not cards
-- Responsive to mobile (tested 390px)
-
----
-
-## Features
-
-### Built (Tasks 1-5)
-- [x] Hero search page with atmospheric glow
-- [x] Responsive design (desktop + mobile)
-- [x] Search results as single-column ledger
-- [x] Answer page with inline citations
-- [x] Loading, empty, error states (styled, not defaults)
-- [x] Design system in Tailwind
-
-### Coming (Tasks 6-8)
-- [ ] Seed data: 20-30 realistic pages
-- [ ] Favicon + OG meta tags + 404 page
-- [ ] Extension popup matching design system
-- [ ] Real API wiring: /api/save, /api/search, /api/ask
-- [ ] Extension auto-capture logic
-- [ ] Live Gemini embeddings + hybrid search
-- [ ] Rate-limit handling (429 backoff)
-
 ---
 
 ## Try It Now
 
-### Development
+### 1. Start Web App
 ```bash
 npm install
 npm run dev
 # Open http://localhost:3000
 ```
 
-### Test the UI
-- Homepage: search input with glow (doesn't search yet, just UI)
-- /search?q=react: shows mock results in ledger format
-- /ask?q=what%20is%20hybrid%20search: shows mock answer with citations
-- Resize to 390px: verify responsive layout
+### 2. Load Extension
+1. Open Chrome → `chrome://extensions`
+2. Enable **Developer mode** (top right)
+3. Click **Load unpacked** → select `extension/` directory
+4. Copy Extension ID → add to `.env.local` (`NEXT_PUBLIC_EXTENSION_ID=...`)
 
 ---
 
-## Interview Talking Points
+## Links
 
-Built into this project:
-
-1. **Design system thinking** — why Fraunces + IBM Plex, why the palette, why no cards
-2. **Hybrid search** — keyword + vector trade-offs
-3. **MV3 extensions** — service worker lifecycle, message passing
-4. **Postgres + pgvector** — single database, no sync complexity
-5. **RAG with citations** — functional, not decoration
-6. **Frontend completeness** — loading, empty, error states matter
-
-Each feature has a "why" — that's what recruiters ask about.
-
----
-
-## 🏗 Architecture (coming)
-
-
----
-
-## 🔗 Links
-
-- **GitHub**: github.com/sadhithyan7/lexicon
-- **Live**: (deploying after Task 9)
+- **GitHub**: github.com/sadhithyan7/lexicon-ai
 - **Author**: Adhithyan S
-
----
-
-## 📝 Notes
-
-- No login yet — every visitor sees the same demo pages (intentional for portfolio)
-- Gemini free tier: 60 req/min, 1M tokens/day
-- Each commit = one feature, read the commit message to understand the "why"
-
----
-
-## Building This
-
-Commit history tells the story. To understand the project:
-
-1. Read this README (you're here)
-2. Check the commit log (each message explains a feature)
-3. Run `npm run dev` and try the UI
-4. Read the code — design decisions are in component props and CSS
-
-Pull requests and issues welcome if you spot bugs during the remaining tasks.
