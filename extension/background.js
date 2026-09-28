@@ -52,7 +52,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   }
 });
 
-/* ── Message handler ─────────────────────────────────────────────────────── */
+/* ── Internal message handler (from content scripts) ─────────────────────── */
 
 chrome.runtime.onMessage.addListener((msg, sender) => {
   if (msg && msg.type === "CAPTURE") {
@@ -69,6 +69,58 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
   }
   // Return false — we don't send a synchronous response.
   return false;
+});
+
+/* ── External message handler (from the web app via externally_connectable) ─ */
+/*
+  The Settings page at localhost:3000 can call:
+    chrome.runtime.sendMessage(EXTENSION_ID, {
+      type: "SET_SETTINGS",
+      autoSave: bool,
+      dwellThresholdSecs: number,
+    })
+  and the extension will write those values to chrome.storage.local —
+  the same keys that content.js reads on every page load.
+
+  Why this approach?
+  - chrome.storage is extension-only — the web page can't call it directly.
+  - externally_connectable is the official MV3 mechanism for web→extension
+    messaging. No content-script relay needed.
+  - The manifest.json "externally_connectable" key lists the allowed origins.
+*/
+chrome.runtime.onMessageExternal.addListener((msg, _sender, sendResponse) => {
+  if (!msg || msg.type !== "SET_SETTINGS") {
+    sendResponse({ ok: false, error: "Unknown message type" });
+    return false;
+  }
+
+  const updates = {};
+
+  if (typeof msg.autoSave === "boolean") {
+    updates.autoSave = msg.autoSave;
+  }
+
+  if (typeof msg.dwellThresholdSecs === "number" && msg.dwellThresholdSecs > 0) {
+    updates.dwellThresholdSecs = msg.dwellThresholdSecs;
+  }
+
+  if (Object.keys(updates).length === 0) {
+    sendResponse({ ok: false, error: "No valid settings fields provided" });
+    return false;
+  }
+
+  chrome.storage.local.set(updates, () => {
+    if (chrome.runtime.lastError) {
+      console.error("[Lexicon] storage.set error:", chrome.runtime.lastError.message);
+      sendResponse({ ok: false, error: chrome.runtime.lastError.message });
+    } else {
+      console.log("[Lexicon] Settings updated from web app:", updates);
+      sendResponse({ ok: true });
+    }
+  });
+
+  // Return true to indicate we'll call sendResponse asynchronously.
+  return true;
 });
 
 /* ── Core save logic ─────────────────────────────────────────────────────── */

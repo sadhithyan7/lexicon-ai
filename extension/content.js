@@ -41,10 +41,17 @@
   let segmentStart = null;   // Date.now() when the current visible segment began
   let dwellTimer = null;     // setTimeout handle
 
-  // Load threshold from storage (set by Settings page, Task 16).
-  chrome.storage.local.get("dwellThresholdSecs", ({ dwellThresholdSecs }) => {
-    if (typeof dwellThresholdSecs === "number" && dwellThresholdSecs > 0) {
-      dwellThresholdMs = dwellThresholdSecs * 1000;
+  // Load threshold AND autoSave flag from storage.
+  // Both keys are written by the Settings page (via background.js) and the popup.
+  // Default: autoSave = true (extension should capture unless explicitly turned off).
+  chrome.storage.local.get(["dwellThresholdSecs", "autoSave"], (result) => {
+    // If autoSave is explicitly set to false, do nothing — no timer, no capture.
+    if (result.autoSave === false) {
+      return;
+    }
+
+    if (typeof result.dwellThresholdSecs === "number" && result.dwellThresholdSecs > 0) {
+      dwellThresholdMs = result.dwellThresholdSecs * 1000;
     }
     // Kick off the timer machinery after we know the threshold.
     initDwellTimer();

@@ -17,6 +17,31 @@ import Sidebar from "@/components/Sidebar";
 import "./globals.css";
 
 /*
+  ── Environment validation ───────────────────────────────────────────────────
+  This runs at server startup (module load time). If any required env var is
+  missing, the app fails immediately with a clear message naming which variable
+  is absent — instead of a cryptic crash later on the first API route that
+  tries to use it.
+
+  Only checked in server context (Node) — not on the browser bundle.
+*/
+if (typeof window === "undefined") {
+  const REQUIRED_ENV = [
+    "GEMINI_API_KEY",
+    "SUPABASE_URL",
+    "SUPABASE_ANON_KEY",
+  ];
+  const missing = REQUIRED_ENV.filter((key) => !process.env[key]);
+  if (missing.length > 0) {
+    throw new Error(
+      `[Lexicon] Missing required environment variable${missing.length > 1 ? "s" : ""}:\n` +
+      missing.map((k) => `  • ${k}`).join("\n") +
+      "\n\nAdd them to .env.local and restart the dev server."
+    );
+  }
+}
+
+/*
   Fraunces: variable font — one file covers all weights (100–900)
   and optical sizes. SOFT + WONK axes unlock its full expressiveness.
 */
