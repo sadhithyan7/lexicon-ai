@@ -127,7 +127,7 @@ Each feature has a "why" — that's what recruiters ask about.
 
 - **GitHub**: github.com/sadhithyan7/lexicon
 - **Live**: (deploying after Task 9)
-- **Author**: Aravindhan S
+- **Author**: Adhithyan S
 
 ---
 
