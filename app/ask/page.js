@@ -3,13 +3,19 @@
 /*
   Ask page — app/ask/page.js
 
-  Layout:
-  - Scrolling message thread (user bubbles right, assistant answers left/full-width)
-  - Gemini answers with inline citation superscripts [n] and a Sources footnote block
-  - In-thread "thinking" indicator while the API call is in flight
-  - Error message with Retry button that resends the same question
-  - Input bar pinned to the bottom of the viewport
-  - "Ask a follow-up" persists the conversation so far (full history sent each call)
+  Layout (fixed-height thread, sticky input):
+  ┌─────────────────────────────────────┐
+  │  Title bar (flex-shrink-0)          │
+  ├─────────────────────────────────────┤
+  │  Message thread (flex-1 overflow-y) │  ← scrolls independently
+  │                                     │
+  │                                     │
+  ├─────────────────────────────────────┤
+  │  Input bar (flex-shrink-0)          │  ← always visible
+  └─────────────────────────────────────┘
+
+  The outer <div> uses h-[100dvh] so the thread fill+scroll works
+  regardless of the sidebar's layout. Each page owns its own scroll context.
 
   State:
     messages: Array<UserMsg | AssistantMsg | PendingMsg | ErrorMsg>
@@ -22,12 +28,18 @@
               OR { error: string } on failure
               OR { noContext: true, answer: string } when nothing is saved
 
-  Segment: { type: "text", text: string } | { type: "cite", n: number }
+  Segment:  { type: "text", text: string } | { type: "cite", n: number }
   Citation: { number: number, title: string, url: string }
+
+  History serialisation:
+    UserMsg:      { id, role: "user",      text: string }
+    AssistantMsg: { id, role: "assistant", answer: string, segments, citations }
+    → Only user + assistant messages are included in the history array sent to /api/ask.
+    → The API's toGeminiHistory() reads .text (user) and .answer (assistant).
 */
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import Panel from "@/components/Panel";
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 
 // ---------------------------------------------------------------------------
 // Message factory helpers — each message has a stable id
@@ -43,7 +55,7 @@ function makeAssistantMsg({ answer, segments, citations }) {
   return {
     id: uid(),
     role: "assistant",
-    answer,      // raw text, stored so history serialisation is easy
+    answer,      // raw text — sent back to /api/ask as history[n].answer
     segments,    // structured segments for rendering
     citations: citations || [],
   };
@@ -58,13 +70,17 @@ function makeErrorMsg(questionText, errorText) {
 }
 
 // ---------------------------------------------------------------------------
-// Main page component
+// Inner page — uses useSearchParams so it must be wrapped in <Suspense>
 // ---------------------------------------------------------------------------
-export default function AskPage() {
-  // Start with an empty thread — user initiates the first message
+function AskPageInner() {
+  const searchParams = useSearchParams();
+  const initialQ = searchParams.get("q") || "";
+
   const [messages, setMessages] = useState([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(initialQ);
   const [sending, setSending] = useState(false);
+  // Track whether we've auto-sent the ?q= param (once only)
+  const autoSentRef = useRef(false);
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -79,7 +95,7 @@ export default function AskPage() {
   }, []);
 
   // ---------------------------------------------------------------------------
-  // Core send function — shared by submit and retry
+  // Core send function — shared by submit, retry, and auto-send
   // ---------------------------------------------------------------------------
   const sendQuestion = useCallback(async (questionText, priorMessages) => {
     setSending(true);
@@ -106,7 +122,7 @@ export default function AskPage() {
         throw new Error(data.error || `Server error ${res.status}`);
       }
 
-      // Handle noContext case — the API returned a "nothing saved" message
+      // Build assistant message. For noContext responses, segments may be missing.
       const assistantMsg = makeAssistantMsg({
         answer: data.answer,
         segments: data.segments || [{ type: "text", text: data.answer }],
@@ -131,6 +147,19 @@ export default function AskPage() {
   }, []);
 
   // ---------------------------------------------------------------------------
+  // Auto-send the ?q= URL parameter once on mount (if it exists)
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (initialQ && !autoSentRef.current) {
+      autoSentRef.current = true;
+      const userMsg = makeUserMsg(initialQ);
+      setMessages([userMsg]);
+      setInput("");
+      sendQuestion(initialQ, [userMsg]);
+    }
+  }, [initialQ, sendQuestion]);
+
+  // ---------------------------------------------------------------------------
   // Handle form submit — main path
   // ---------------------------------------------------------------------------
   async function handleSend(e) {
@@ -150,14 +179,14 @@ export default function AskPage() {
   }
 
   // ---------------------------------------------------------------------------
-  // Handle retry — re-sends the same question with same prior history
+  // Handle retry — re-sends the same question with the same prior history
   // ---------------------------------------------------------------------------
   function handleRetry(errorMsg) {
-    // Rebuild the history up to (but not including) the error message
+    // Rebuild history up to (but not including) the error message
     const indexOfError = messages.findIndex((m) => m.id === errorMsg.id);
     const priorMessages = messages.slice(0, indexOfError);
 
-    // Replace the error message with a user message (re-display the question)
+    // Replace the error message with a fresh user message (re-display the question)
     const retryUserMsg = makeUserMsg(errorMsg.question);
     setMessages([...priorMessages, retryUserMsg]);
 
@@ -167,26 +196,38 @@ export default function AskPage() {
   const isEmpty = messages.length === 0;
 
   return (
+    /*
+      h-[100dvh] = exact viewport height (dvh accounts for mobile browser chrome).
+      flex-col with a fixed-height header + footer lets the middle section scroll.
+      max-w-[760px] keeps the reading line comfortable on wide displays.
+    */
     <div className="flex flex-col h-screen" style={{ maxWidth: "760px" }}>
       {/* ── Page title ── */}
       <div className="px-8 pt-8 pb-4 flex-shrink-0">
         <h1 className="font-display font-semibold text-parchment text-3xl">Ask</h1>
         <p className="font-sans text-faded-ink text-xs mt-1">
-          Ask anything — answers are grounded in your saved pages.
+          Answers grounded in your saved pages — ask anything, request a summary.
         </p>
       </div>
 
       {/* ── Message thread ── */}
-      <div className="flex-1 overflow-y-auto px-8 pb-4 space-y-6">
+      <div className="flex-1 overflow-y-auto px-8 pb-4 space-y-6 min-h-0">
         {isEmpty && !sending && (
           /* Empty-state placeholder */
           <div className="flex flex-col items-center justify-center h-full text-center py-16 gap-3">
-            <span className="text-4xl select-none" aria-hidden>💬</span>
+            <span
+              className="text-4xl select-none"
+              aria-hidden
+              style={{ filter: "drop-shadow(0 0 16px rgba(201,162,39,0.35))" }}
+            >
+              💬
+            </span>
             <p className="font-sans text-parchment text-sm font-medium">
               Start a conversation
             </p>
             <p className="font-sans text-faded-ink text-xs max-w-[32ch]">
-              Ask a question, request a summary, or explore what you&apos;ve saved.
+              Ask a question, request a summary, or ask a follow-up — answers
+              are grounded only in your saved pages.
             </p>
           </div>
         )}
@@ -235,7 +276,11 @@ export default function AskPage() {
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isEmpty ? "Ask a question about your saved pages…" : "Ask a follow-up…"}
+            placeholder={
+              isEmpty
+                ? "Ask a question about your saved pages…"
+                : "Ask a follow-up…"
+            }
             disabled={sending}
             autoComplete="off"
             className="
@@ -266,6 +311,32 @@ export default function AskPage() {
 }
 
 // ---------------------------------------------------------------------------
+// Default export — wraps inner component in Suspense (required for
+// useSearchParams in the App Router: it reads a dynamic runtime value)
+// ---------------------------------------------------------------------------
+export default function AskPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex flex-col h-screen" style={{ maxWidth: "760px" }}>
+          <div className="px-8 pt-8 pb-4">
+            <div className="skeleton h-9 w-16 rounded-md" />
+          </div>
+          <div className="flex-1 px-8 pb-4 min-h-0">
+            <div className="skeleton h-12 w-full rounded-md mt-4" />
+          </div>
+          <div className="px-8 py-5 border-t border-faded-ink/10">
+            <div className="skeleton h-12 w-full rounded-md" />
+          </div>
+        </div>
+      }
+    >
+      <AskPageInner />
+    </Suspense>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // User message bubble — right-aligned
 // ---------------------------------------------------------------------------
 function UserBubble({ text }) {
@@ -275,7 +346,7 @@ function UserBubble({ text }) {
         className="max-w-[70%] px-4 py-3 rounded-xl font-sans text-sm text-parchment leading-relaxed"
         style={{
           background: "linear-gradient(160deg, #262330, #201D28)",
-          border: "1px solid rgba(156,150,168,0.12)",
+          border: "1px solid rgba(156,150,168,0.15)",
         }}
       >
         {text}
@@ -285,7 +356,7 @@ function UserBubble({ text }) {
 }
 
 // ---------------------------------------------------------------------------
-// Assistant answer — full-width, with inline citations and sources block
+// Assistant answer — full-width, with inline citation superscripts + sources
 // ---------------------------------------------------------------------------
 function AssistantAnswer({ segments, citations }) {
   return (
@@ -302,9 +373,11 @@ function AssistantAnswer({ segments, citations }) {
 }
 
 // ---------------------------------------------------------------------------
-// Segment renderer — renders text + [n] superscript links
+// Segment renderer — renders plain text and [n] superscript citation links
 // ---------------------------------------------------------------------------
 function SegmentRenderer({ segments }) {
+  if (!segments || segments.length === 0) return null;
+
   return (
     <>
       {segments.map((seg, i) =>
@@ -329,7 +402,7 @@ function SegmentRenderer({ segments }) {
 }
 
 // ---------------------------------------------------------------------------
-// Sources footnote block
+// Sources footnote block — hairline divider, numbered list of cited pages
 // ---------------------------------------------------------------------------
 function SourcesBlock({ citations }) {
   return (
@@ -346,7 +419,7 @@ function SourcesBlock({ citations }) {
           >
             <span className="shrink-0 text-gold-leaf font-medium">[{src.number}]</span>
             <a
-              href={src.url}           /* Full URL stored in DB — no prefix needed */
+              href={src.url}
               target="_blank"
               rel="noopener noreferrer"
               className="text-lamp-green hover:underline underline-offset-2 truncate"
@@ -364,11 +437,15 @@ function SourcesBlock({ citations }) {
 }
 
 // ---------------------------------------------------------------------------
-// In-thread thinking indicator (3-dot pulse)
+// In-thread thinking indicator — 3-dot spinner + label
 // ---------------------------------------------------------------------------
 function ThinkingIndicator() {
   return (
-    <div className="flex items-center gap-2 text-faded-ink" aria-live="polite" aria-label="Generating response">
+    <div
+      className="flex items-center gap-2 text-faded-ink"
+      aria-live="polite"
+      aria-label="Generating response"
+    >
       <span className="spinner" aria-hidden="true" />
       <span className="font-sans text-xs">Thinking…</span>
     </div>
@@ -376,7 +453,7 @@ function ThinkingIndicator() {
 }
 
 // ---------------------------------------------------------------------------
-// Error bubble with retry button
+// Error bubble with retry — shown in-thread, not as a full page error
 // ---------------------------------------------------------------------------
 function ErrorBubble({ error, onRetry }) {
   return (

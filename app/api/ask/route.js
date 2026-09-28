@@ -181,19 +181,35 @@ function parseCitations(text) {
 
 // ---------------------------------------------------------------------------
 // Convert the client-side history array to Gemini's chat history format.
-// Client sends: [{ role: "user"|"assistant", text?, content? }]
-// Gemini wants: [{ role: "user"|"model", parts: [{ text }] }]
+//
+// The Ask page stores messages as:
+//   UserMsg:      { id, role: "user",      text: string }
+//   AssistantMsg: { id, role: "assistant", answer: string, segments, citations }
+//
+// Gemini startChat history wants: [{ role: "user"|"model", parts: [{ text }] }]
+//
+// Extraction priority:
+//   1. msg.text   — user messages
+//   2. msg.answer — assistant messages (raw answer text stored by makeAssistantMsg)
+//   3. msg.content as array of segments — generic fallback
+//   4. msg.content as plain string — final fallback
 // ---------------------------------------------------------------------------
 function toGeminiHistory(history) {
   if (!Array.isArray(history) || history.length === 0) return [];
 
   return history
     .map((msg) => {
-      // Extract plain text from either msg.text (user) or msg.content (assistant segments)
       let text = "";
-      if (typeof msg.text === "string") {
+
+      if (typeof msg.text === "string" && msg.text.trim()) {
+        // User messages: { role: "user", text }
         text = msg.text;
+      } else if (typeof msg.answer === "string" && msg.answer.trim()) {
+        // Assistant messages: { role: "assistant", answer }
+        // This is the raw Gemini response text, ideal for history.
+        text = msg.answer;
       } else if (Array.isArray(msg.content)) {
+        // Segment array fallback: extract text-type segments
         text = msg.content
           .filter((c) => c.type === "text")
           .map((c) => c.text)
@@ -213,8 +229,66 @@ function toGeminiHistory(history) {
 }
 
 // ---------------------------------------------------------------------------
+// Build the retrieval query for hybrid search.
+//
+// For first questions (no history), the retrieval query IS the question.
+//
+// For follow-up questions that are short or referential (contain anaphors like
+// "those", "it", "them", "that", "they", "these"), we prepend the key noun
+// phrases from the last user turn in history. This ensures that retrieval
+// stays anchored to the right topic even when the current question is phrased
+// as "can you give me an example of that?" rather than repeating the topic.
+//
+// Example:
+//   history[-1].text = "What are React hooks and why are they useful?"
+//   question         = "Can you give me a specific example of the useState hook from those docs?"
+//   → retrievalQuery = "React hooks useState example from those docs"
+//
+// We only do this when:
+//   - There is at least one prior user message in history
+//   - The current question is referential (contains known anaphors) OR is short (<= 8 words)
+// ---------------------------------------------------------------------------
+const ANAPHORS = /\b(those|these|that|them|they|it|its|their|such|above|mentioned|previous|prior)\b/i;
+const SHORT_QUESTION_WORD_LIMIT = 8;
+
+function buildRetrievalQuery(question, history) {
+  // No history → use question as-is
+  if (!Array.isArray(history) || history.length === 0) return question;
+
+  // Find the last user message in history
+  const lastUserMsg = [...history].reverse().find((m) => m.role === "user");
+  if (!lastUserMsg) return question;
+
+  const lastUserText = (lastUserMsg.text || lastUserMsg.content || "").trim();
+  if (!lastUserText) return question;
+
+  const questionWords = question.trim().split(/\s+/);
+  const isReferential = ANAPHORS.test(question);
+  const isShort = questionWords.length <= SHORT_QUESTION_WORD_LIMIT;
+
+  // Only expand if the question is referential or very short
+  if (!isReferential && !isShort) return question;
+
+  // Extract keywords from the last user message (words > 3 chars, not stop words)
+  const STOP = new Set(["what", "when", "where", "which", "who", "how", "does", "have",
+    "with", "from", "that", "this", "they", "their", "them", "then", "than", "into",
+    "are", "was", "will", "can", "could", "would", "should", "being", "been", "were"]);
+  const priorKeywords = lastUserText
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w.length > 3 && !STOP.has(w));
+
+  if (priorKeywords.length === 0) return question;
+
+  // Prepend the top-5 keywords from the prior turn to the current question
+  const expansion = [...new Set(priorKeywords)].slice(0, 5).join(" ");
+  return `${expansion} ${question}`;
+}
+
+// ---------------------------------------------------------------------------
 // POST /api/ask
-// Body: { question: string, history: Array<{ role, text?, content? }> }
+// Body: { question: string, history: Array<{ role, text?, answer?, content? }> }
 // ---------------------------------------------------------------------------
 export async function POST(request) {
   try {
@@ -247,11 +321,16 @@ export async function POST(request) {
     const supabase = createClient(supabaseUrl, supabaseKey);
     const genAI = new GoogleGenerativeAI(geminiKey);
 
-    // 2. Hybrid search on the CURRENT question (not the full history)
-    //    This keeps retrieval focused on what was just asked, not prior turns.
-    const { docs } = await hybridSearch(supabase, genAI, question);
+    // 2. Build retrieval query — expands short/referential follow-ups with keywords
+    //    from the prior user turn so hybrid search finds the right documents even when
+    //    the follow-up says "those", "it", "them", etc. The ACTUAL question sent to
+    //    Gemini for generation remains the original question (not the expanded form).
+    const retrievalQuery = buildRetrievalQuery(question, history);
 
-    // 3. No relevant documents → skip Gemini entirely, return a specific message
+    // 3. Hybrid search on the retrieval query (not the full history)
+    const { docs } = await hybridSearch(supabase, genAI, retrievalQuery);
+
+    // 4. No relevant documents → skip Gemini entirely, return a specific message
     if (docs.length === 0) {
       return NextResponse.json({
         answer:
@@ -312,11 +391,13 @@ ${contextBlock}`;
     const { segments, citedNumbers } = parseCitations(rawAnswer);
 
     // 9. Filter sources: only return sources that were actually cited in the answer.
-    //    If no citation markers appeared at all, return all sources (graceful fallback).
+    //    If no citation markers appeared at all, return [] — do not force fake citations.
+    //    The frontend renders citations as a footnote block only when citations.length > 0,
+    //    so an empty array means the answer is shown cleanly with no Sources section.
     const citations =
       citedNumbers.size > 0
         ? sourcesList.filter((s) => citedNumbers.has(s.number))
-        : sourcesList;
+        : [];
 
     return NextResponse.json({
       answer: rawAnswer,       // raw text (for history serialisation)
