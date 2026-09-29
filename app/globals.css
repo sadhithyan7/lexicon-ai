@@ -1,182 +1,211 @@
-/*
-  Tailwind v4 uses @theme instead of tailwind.config.js for custom tokens.
-  All design-system values live here so they're co-located with the CSS
-  that actually uses them — no separate config file needed.
-*/
 @import "tailwindcss";
 
-/*
-  @theme inline tells Tailwind to generate utility classes from these
-  CSS custom properties directly. "inline" means the variables are
-  inlined into the generated utilities rather than kept as runtime vars.
-  This gives us classes like bg-ink, text-parchment, font-display, etc.
-*/
 @theme inline {
-  /* ── Color tokens: The Athenaeum palette ── */
-  --color-ink:          #16141C;   /* primary bg — warm near-black, plum undertone */
-  --color-cover:        #201D28;   /* surface/panel — one step lighter than Ink */
-  --color-cover-raised: #262330;   /* raised panel top — gradient start */
-  --color-parchment:    #EDE7D8;   /* primary text — warm off-white, never pure white */
-  --color-faded-ink:    #9C96A8;   /* secondary/muted text */
-  --color-gold-leaf:    #C9A227;   /* primary accent: CTAs, active states */
-  --color-lamp-green:   #3F7D69;   /* secondary accent: citation links, saved/success */
-  --color-danger:       #B5573F;   /* destructive / error state */
+  /* ── Color tokens: The Athenaeum Glass Palette ── */
+  --color-ink:          #0D0B12;   /* primary bg — rich midnight plum */
+  --color-canvas:       #181522;   /* main card canvas container */
+  --color-cover:        #201D2C;   /* surface/panel — glass container */
+  --color-cover-raised: #282436;   /* raised panel top */
+  --color-parchment:    #F5EFE0;   /* primary text — luminous off-white */
+  --color-faded-ink:    #A39BAE;   /* secondary/muted text */
+  --color-gold-leaf:    #E5B834;   /* primary accent: vibrant gold Leaf */
+  --color-gold-glow:    #F7D048;   /* gold glow highlight */
+  --color-lamp-green:   #429B7F;   /* citation & live success green */
+  --color-danger:       #E0485C;   /* destructive / error state */
+  --color-ruby:         #C026D3;   /* dynamic vibrant accent pop */
 
   /* ── Typography ── */
-  /* Fraunces: display/headline — page titles, hero line, section intros */
   --font-display: var(--font-fraunces), Georgia, serif;
-  /* IBM Plex Sans: body/UI — buttons, inputs, result rows, citations, nav */
   --font-sans: var(--font-ibm-plex-sans), system-ui, sans-serif;
 }
 
-/*
-  Base layer: apply the Athenaeum defaults globally so every element
-  starts from the right palette without needing explicit Tailwind classes
-  on every tag.
-*/
 @layer base {
   html {
-    background-color: #16141C; /* --color-ink */
-    color: #EDE7D8;            /* --color-parchment */
+    background-color: #0D0B12;
+    color: #F5EFE0;
     scroll-behavior: smooth;
   }
 
   body {
-    background-color: #16141C;
-    color: #EDE7D8;
+    background-color: #0D0B12;
+    color: #F5EFE0;
     font-family: var(--font-sans);
+    overflow-x: hidden;
     overflow-y: scroll;
     -webkit-font-smoothing: antialiased;
+    background-image: 
+      radial-gradient(circle at 15% 20%, rgba(229, 184, 52, 0.08) 0%, transparent 45%),
+      radial-gradient(circle at 85% 60%, rgba(192, 38, 211, 0.08) 0%, transparent 45%),
+      radial-gradient(circle at 50% 90%, rgba(66, 155, 127, 0.07) 0%, transparent 50%);
+    background-attachment: fixed;
   }
 
-  /* Citation and navigation links use Lamp Green */
   a {
-    color: #3F7D69;
+    color: #429B7F;
     text-decoration: none;
+    transition: all 0.15s ease;
   }
 
   a:hover {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-  }
-
-  /* Remove browser default focus ring from mouse; re-add for keyboard */
-  :focus {
-    outline: none;
+    color: #52B495;
+    text-shadow: 0 0 12px rgba(66, 155, 127, 0.4);
   }
 
   :focus-visible {
-    outline: 2px solid #C9A227;
+    outline: 2px solid #E5B834;
     outline-offset: 3px;
-    border-radius: 2px;
+    border-radius: 4px;
   }
 
-  /* Primary buttons default style — individual buttons can override */
   button {
-    background-color: #C9A227;
-    color: #16141C;
     font-family: var(--font-sans);
     cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   }
 
-  button:hover {
-    background-color: #b8911f;
-  }
-
-  /* Hairline divider — the "ledger" separator */
-  hr {
-    border: none;
-    border-top: 1px solid rgba(156, 150, 168, 0.2);
-  }
-
-  /* Custom scrollbar to match the dark theme */
+  /* Custom scrollbar */
   ::-webkit-scrollbar {
     width: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #16141C;
+    background: #0D0B12;
   }
   ::-webkit-scrollbar-thumb {
-    background: rgba(156, 150, 168, 0.3);
-    border-radius: 3px;
+    background: rgba(163, 155, 174, 0.25);
+    border-radius: 9999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: rgba(156, 150, 168, 0.5);
+    background: rgba(229, 184, 52, 0.5);
   }
 }
 
-/*
-  ── Raised Panel ──
-  The key structural element: a slightly elevated surface with a subtle
-  gradient (cover-raised top → cover bottom), hairline border, and
-  the soft double-shadow from the design spec.
-  Used via the .panel class in Panel.js and inline where needed.
-*/
-.panel {
-  background: linear-gradient(160deg, #262330 0%, #201D28 100%);
-  border: 1px solid rgba(156, 150, 168, 0.12);
-  box-shadow: 0 16px 40px -16px rgba(0,0,0,0.55), 0 2px 8px rgba(0,0,0,0.3);
-  border-radius: 10px; /* --radius-md */
+/* ── Floating 3D Popout Graphics ── */
+@keyframes floatSlow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(2deg); }
 }
 
-/*
-  ── Ledger row ──
-  Hairline divider only — no per-row background or border-radius.
-  Applied to <li> or <div> containers INSIDE a .panel.
-*/
+@keyframes floatReverse {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(10px) rotate(-2deg); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 0.95; transform: scale(1.08); }
+}
+
+.animate-float {
+  animation: floatSlow 5s ease-in-out infinite;
+}
+
+.animate-float-reverse {
+  animation: floatReverse 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 4s ease-in-out infinite;
+}
+
+/* ── Glassmorphism Panels & Canvas ── */
+.glass-canvas {
+  background: rgba(24, 21, 34, 0.82);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 32px 80px -16px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(229, 184, 52, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.panel {
+  background: linear-gradient(165deg, rgba(40, 36, 54, 0.75) 0%, rgba(28, 24, 38, 0.85) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 16px 40px -12px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.panel:hover {
+  border-color: rgba(229, 184, 52, 0.25);
+  box-shadow: 
+    0 20px 48px -12px rgba(0, 0, 0, 0.7),
+    0 0 24px -4px rgba(229, 184, 52, 0.15);
+}
+
+.glass-pill {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  color: #F5EFE0;
+  transition: all 0.2s ease;
+}
+
+.glass-pill:hover {
+  background: rgba(229, 184, 52, 0.15);
+  border-color: rgba(229, 184, 52, 0.4);
+  box-shadow: 0 0 16px rgba(229, 184, 52, 0.25);
+}
+
+.glass-pill-active {
+  background: linear-gradient(135deg, rgba(229, 184, 52, 0.25) 0%, rgba(229, 184, 52, 0.1) 100%);
+  border: 1px solid rgba(229, 184, 52, 0.5);
+  color: #F5EFE0;
+  box-shadow: 0 0 16px rgba(229, 184, 52, 0.2);
+}
+
+/* ── Ledger Row ── */
 .ledger-row {
-  border-top: 1px solid rgba(156, 150, 168, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 0.15s ease;
 }
 
 .ledger-row:first-child {
   border-top: none;
 }
 
-/*
-  Hero glow: the one atmospheric touch on the homepage/dashboard.
-  Opacity is toggled via a data-focused attribute set by React state.
-*/
+.ledger-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ── Hero Glow & Starburst ── */
 .hero-glow {
-  opacity: 0.15;
-  transition: opacity 200ms ease;
+  opacity: 0.2;
+  transition: opacity 300ms ease, transform 300ms ease;
+  filter: blur(40px);
 }
 
 .hero-glow[data-focused="true"] {
-  opacity: 0.28;
+  opacity: 0.45;
+  transform: translate(-50%, -50%) scale(1.15);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .hero-glow {
-    transition: none;
-  }
+.starburst-bg {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.07) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
 
-/*
-  Shimmer: the loading skeleton animation.
-*/
+/* Shimmer Loading Skeleton */
 @keyframes shimmer {
-  0%   { opacity: 0.35; }
-  50%  { opacity: 0.7; }
-  100% { opacity: 0.35; }
+  0%   { opacity: 0.3; }
+  50%  { opacity: 0.75; }
+  100% { opacity: 0.3; }
 }
 
 .skeleton {
-  background-color: #262330; /* cover-raised */
-  animation: shimmer 1.4s ease-in-out infinite;
-  border-radius: 4px;
+  background: linear-gradient(90deg, rgba(40, 36, 54, 0.8) 0%, rgba(60, 54, 80, 0.8) 50%, rgba(40, 36, 54, 0.8) 100%);
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
   display: block;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .skeleton {
-    animation: none;
-    opacity: 0.5;
-  }
-}
-
-/*
-  Spinner: rotating border-arc for in-progress states.
-*/
+/* Spinner */
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
@@ -185,65 +214,60 @@
 .spinner {
   width: 18px;
   height: 18px;
-  border: 2px solid rgba(201, 162, 39, 0.25);
-  border-top-color: #C9A227;
+  border: 2px solid rgba(229, 184, 52, 0.25);
+  border-top-color: #E5B834;
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
   display: inline-block;
   flex-shrink: 0;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .spinner {
-    animation: none;
-    border-top-color: rgba(201, 162, 39, 0.5);
-  }
-}
-
-/* Sidebar active nav item gold accent bar */
+/* Active Nav Gold Accent Bar */
 .nav-active-bar {
   position: absolute;
   left: 0;
   top: 50%;
   transform: translateY(-50%);
-  width: 3px;
-  height: 20px;
-  background-color: #C9A227;
-  border-radius: 0 2px 2px 0;
+  width: 4px;
+  height: 24px;
+  background: linear-gradient(180deg, #F7D048 0%, #E5B834 100%);
+  border-radius: 0 4px 4px 0;
+  box-shadow: 0 0 10px rgba(229, 184, 52, 0.6);
 }
 
-/* Range input styling for the settings slider */
+/* Range input */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   width: 100%;
-  height: 4px;
-  background: rgba(156, 150, 168, 0.2);
-  border-radius: 2px;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
   outline: none;
 }
 
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
-  background: #C9A227;
+  background: #E5B834;
+  box-shadow: 0 0 12px rgba(229, 184, 52, 0.5);
   cursor: pointer;
   transition: transform 150ms ease;
 }
 
 input[type="range"]::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
+  transform: scale(1.25);
 }
 
-/* Toggle switch */
+/* Toggle Switch */
 .toggle {
   position: relative;
   display: inline-block;
-  width: 40px;
-  height: 22px;
+  width: 44px;
+  height: 24px;
   flex-shrink: 0;
 }
 
@@ -251,35 +275,37 @@ input[type="range"]::-webkit-slider-thumb:hover {
   opacity: 0;
   width: 0;
   height: 0;
-  background: none;
 }
 
 .toggle-slider {
   position: absolute;
   cursor: pointer;
   top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(156, 150, 168, 0.25);
-  border-radius: 22px;
-  transition: background-color 200ms ease;
+  background-color: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 24px;
+  transition: all 200ms ease;
 }
 
 .toggle-slider::before {
   content: "";
   position: absolute;
-  height: 16px;
-  width: 16px;
-  left: 3px;
-  top: 3px;
-  background-color: #9C96A8;
+  height: 18px;
+  width: 18px;
+  left: 2px;
+  top: 2px;
+  background-color: #A39BAE;
   border-radius: 50%;
   transition: transform 200ms ease, background-color 200ms ease;
 }
 
 .toggle input:checked + .toggle-slider {
-  background-color: rgba(63, 125, 105, 0.35);
+  background-color: rgba(66, 155, 127, 0.3);
+  border-color: rgba(66, 155, 127, 0.5);
 }
 
 .toggle input:checked + .toggle-slider::before {
-  transform: translateX(18px);
-  background-color: #3F7D69;
+  transform: translateX(20px);
+  background-color: #429B7F;
+  box-shadow: 0 0 10px rgba(66, 155, 127, 0.6);
 }
