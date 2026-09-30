@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import Panel from "@/components/Panel";
 
 function relativeTime(isoString) {
   if (!isoString) return "";
@@ -13,36 +12,21 @@ function relativeTime(isoString) {
   const days  = Math.floor(diff / 86_400_000);
 
   if (mins < 1)    return "Just now";
-  if (mins < 60)   return `${mins}m ago`;
-  if (hours < 24)  return `${hours}h ago`;
+  if (mins < 60)   return `${mins}m`;
+  if (hours < 24)  return `${hours}h`;
   if (days === 1)  return "Yesterday";
-  if (days < 7)    return `${days} days ago`;
+  if (days < 7)    return `${days}d`;
   return new Date(isoString).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-function StatSkeleton() {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-      {[0, 1, 2].map((i) => (
-        <Panel key={i} className="p-6">
-          <span className="skeleton h-8 w-16 block mb-2" />
-          <span className="skeleton h-3 w-28 block" />
-        </Panel>
-      ))}
-    </div>
-  );
 }
 
 function RecentSkeleton() {
   return (
-    <div className="space-y-3">
-      {[1, 2, 3, 4].map((i) => (
-        <div key={i} className="p-4 rounded-xl bg-white/5 flex items-center justify-between">
-          <div className="space-y-2 flex-1">
-            <span className="skeleton h-4 w-2/3 block" />
+    <div className="space-y-0 border-t border-border mt-2">
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <div key={i} className="flex items-center justify-between py-2 border-b border-border">
+          <div className="space-y-1 flex-1 pr-4">
             <span className="skeleton h-3 w-1/3 block" />
           </div>
-          <span className="skeleton h-3 w-16 block ml-4" />
         </div>
       ))}
     </div>
@@ -51,10 +35,8 @@ function RecentSkeleton() {
 
 export default function Dashboard() {
   const router = useRouter();
-  const [query, setQuery]         = useState("");
-  const [isFocused, setIsFocused] = useState(false);
+  const [query, setQuery] = useState("");
   const [isSearching, setIsSearching] = useState(false);
-  const [activeTab, setActiveTab] = useState("01");
 
   const [stats, setStats]             = useState(null);
   const [statsStatus, setStatsStatus] = useState("loading");
@@ -78,7 +60,7 @@ export default function Dashboard() {
   const loadRecent = useCallback(async () => {
     setRecentStatus("loading");
     try {
-      const res  = await fetch("/api/documents?limit=5");
+      const res  = await fetch("/api/documents?limit=10");
       const data = await res.json();
       if (!res.ok || data.error) throw new Error(data.error || "Failed");
       if (!data.documents || data.documents.length === 0) {
@@ -93,8 +75,15 @@ export default function Dashboard() {
   }, []);
 
   useEffect(() => {
-    loadStats();
-    loadRecent();
+    let ignore = false;
+    async function fetchData() {
+      await loadStats();
+      if (!ignore) {
+        await loadRecent();
+      }
+    }
+    fetchData();
+    return () => { ignore = true; };
   }, [loadStats, loadRecent]);
 
   function handleSearch(e) {
@@ -105,350 +94,254 @@ export default function Dashboard() {
     router.push(`/search?q=${encodeURIComponent(q)}`);
   }
 
-  const hour = new Date().getHours();
-  const greeting =
-    hour < 12 ? "Good Morning" :
-    hour < 18 ? "Good Afternoon" : "Good Evening";
-
   return (
-    <div className="p-6 md:p-10 max-w-6xl mx-auto relative">
+    <div className="min-h-screen flex flex-col bg-canvas font-sans text-primary">
       
-      {/* ── Outer Floating Canvas Container (Matching User Reference Layout) ── */}
-      <div className="glass-canvas rounded-[32px] p-8 md:p-12 relative overflow-visible border border-white/15 shadow-[0_32px_96px_-16px_rgba(0,0,0,0.85)]">
-        
-        {/* ── Floating 3D Graphic Popout Badges (Extending Past Container Borders) ── */}
-        
-        {/* Top-Left Popping Badge */}
-        <div className="absolute -top-5 -left-4 z-20 animate-float">
-          <div className="px-4 py-2 rounded-2xl bg-gradient-to-tr from-gold-leaf to-amber-300 text-ink font-display font-bold text-xs shadow-xl shadow-gold-leaf/30 flex items-center gap-2 border border-white/40">
-            <span className="w-2.5 h-2.5 rounded-full bg-ink animate-ping" />
-            <span>⚡ AI Knowledge Engine</span>
-          </div>
-        </div>
-
-        {/* Top-Right Popping Badge */}
-        <div className="absolute -top-5 -right-4 z-20 animate-float-reverse">
-          <div className="px-4 py-2 rounded-2xl bg-gradient-to-tr from-purple-600 to-fuchsia-500 text-white font-sans font-semibold text-xs shadow-xl shadow-purple-500/30 flex items-center gap-2 border border-white/30">
-            <span>✨ Gemini 3.6 RAG</span>
-          </div>
-        </div>
-
-        {/* Bottom-Right Popping Badge */}
-        <div className="absolute -bottom-5 -right-4 z-20 animate-float">
-          <div className="px-4 py-2 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-ink font-sans font-bold text-xs shadow-xl shadow-emerald-500/30 flex items-center gap-2 border border-white/40">
-            <span>🔍 Hybrid Vector RRF</span>
-          </div>
-        </div>
-
-        {/* ── Inner Header & Pill Navigation ── */}
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-10 pb-6 border-b border-white/10">
-          <div className="flex items-center gap-3">
-            <div className="px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs text-parchment font-medium tracking-wide">
-              Lexicon Portfolio v0.2
-            </div>
-            <span className="w-1.5 h-1.5 rounded-full bg-lamp-green" />
-            <span className="text-xs text-faded-ink">Connected to Supabase + Gemini</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {["01", "02", "03"].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => {
-                  setActiveTab(tab);
-                  if (tab === "02") router.push("/search");
-                  if (tab === "03") router.push("/ask");
-                }}
-                className={`w-9 h-9 rounded-full text-xs font-semibold flex items-center justify-center transition-all ${
-                  activeTab === tab
-                    ? "bg-gold-leaf text-ink shadow-lg shadow-gold-leaf/30 font-bold scale-105"
-                    : "bg-white/5 text-faded-ink hover:bg-white/10 hover:text-parchment border border-white/10"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
-
-            <Link href="/settings" className="glass-pill px-4 py-1.5 text-xs font-medium ml-2">
-              Settings ⚙️
-            </Link>
-          </div>
-        </div>
-
-        {/* ── Hero Headline Banner ── */}
-        <div className="mb-10">
-          <div className="inline-block px-3.5 py-1 rounded-full bg-gold-leaf/15 border border-gold-leaf/30 text-gold-leaf text-xs font-medium tracking-wider uppercase mb-4">
-            {greeting} • Personal Knowledge Base
-          </div>
-
-          <h1 className="font-display font-bold text-parchment text-4xl md:text-6xl tracking-tight leading-[1.1] mb-4">
-            Your Mind, <span className="text-transparent bg-clip-text bg-gradient-to-r from-gold-leaf via-amber-200 to-yellow-400">Infinite & Indexed.</span>
-          </h1>
-
-          <p className="font-sans text-faded-ink text-base md:text-lg max-w-2xl leading-relaxed">
-            Auto-capture every article, paper, and insight you read. Search semantically, ask questions, and get cited answers grounded in your personal web history.
-          </p>
-        </div>
-
-        {/* ── Quick-Ask Search Bar with Gold Glow ── */}
-        <div className="relative mb-12">
-          {/* Atmospheric Radial Glow */}
-          <div
-            aria-hidden="true"
-            className="hero-glow pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[200px] rounded-full"
-            data-focused={isFocused ? "true" : "false"}
-            style={{
-              background: "radial-gradient(ellipse at center, rgba(229, 184, 52, 0.35) 0%, rgba(192, 38, 211, 0.15) 50%, transparent 70%)",
-              zIndex: 0,
-            }}
-          />
-
-          <form onSubmit={handleSearch} className="relative z-10 flex gap-3" role="search">
-            <div className="relative flex-1">
-              <svg
-                className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-faded-ink"
-                width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"
-              >
-                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="2" />
-                <path d="M16.5 16.5L21 21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-              <input
-                id="dashboard-search"
-                type="search"
-                autoComplete="off"
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onFocus={() => setIsFocused(true)}
-                onBlur={() => setIsFocused(false)}
-                placeholder="Ask your library anything or search topics…"
-                disabled={isSearching}
-                className="
-                  w-full bg-[#181424]/90 border border-white/20
-                  text-parchment placeholder:text-faded-ink/60
-                  font-sans text-base md:text-lg
-                  pl-12 pr-12 py-4
-                  rounded-2xl shadow-2xl
-                  focus:border-gold-leaf/80 focus:ring-4 focus:ring-gold-leaf/15
-                  transition-all duration-200
-                  disabled:opacity-60
-                "
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-mono text-faded-ink/60 bg-white/5 px-2 py-1 rounded border border-white/10 hidden sm:inline-block">
-                ⌘K
-              </span>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSearching || !query.trim()}
-              className="
-                bg-gradient-to-r from-gold-leaf to-amber-400 text-ink
-                font-sans font-bold text-base
-                px-7 py-4 rounded-2xl shrink-0
-                hover:shadow-lg hover:shadow-gold-leaf/30 hover:scale-[1.02]
-                active:scale-95 transition-all duration-200
-                disabled:opacity-50 disabled:hover:scale-100
-                flex items-center gap-2 border border-amber-200/40
-              "
-            >
-              {isSearching ? (
-                <><span className="spinner" style={{ width: 16, height: 16 }} /><span>Searching…</span></>
-              ) : (
-                <><span>Ask AI</span><span className="text-lg">→</span></>
-              )}
-            </button>
-          </form>
-
-          {/* Quick Filter Pill Suggestions */}
-          <div className="flex flex-wrap items-center gap-2 mt-3 pl-2">
-            <span className="text-xs text-faded-ink/70 font-medium">Quick Try:</span>
-            {[
-              "What is nuclear warfare?",
-              "React Hooks & State",
-              "Hybrid Vector Search",
-              "Supabase Postgres pgvector",
-            ].map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => {
-                  setQuery(tag);
-                  router.push(`/search?q=${encodeURIComponent(tag)}`);
-                }}
-                className="text-xs text-parchment/80 bg-white/5 hover:bg-white/15 px-3 py-1 rounded-full border border-white/10 transition-colors"
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* ── Stat Cards Strip ── */}
-        {statsStatus === "loading" && <StatSkeleton />}
-
-        {statsStatus === "error" && (
-          <div className="p-4 mb-8 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center justify-between">
-            <p className="text-xs text-red-300 font-medium">Couldn&apos;t load live stats from Supabase.</p>
-            <button
-              type="button"
-              onClick={loadStats}
-              className="text-xs font-semibold text-gold-leaf hover:underline"
-            >
-              Retry Connection
-            </button>
-          </div>
-        )}
-
-        {statsStatus === "success" && stats && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
-            <Panel className="p-6 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 text-3xl opacity-20 group-hover:scale-110 transition-transform">📚</div>
-              <p className="font-display font-bold text-parchment text-4xl mb-1">
-                {stats.totalSaved ?? 0}
-              </p>
-              <p className="font-sans text-xs text-faded-ink uppercase tracking-wider font-semibold">Total Pages Saved</p>
-            </Panel>
-
-            <Panel className="p-6 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 text-3xl opacity-20 group-hover:scale-110 transition-transform">⚡</div>
-              <p className="font-display font-bold text-gold-leaf text-4xl mb-1">
-                {stats.savedThisWeek ?? 0}
-              </p>
-              <p className="font-sans text-xs text-faded-ink uppercase tracking-wider font-semibold">Saved This Week</p>
-            </Panel>
-
-            <Panel className="p-6 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 text-3xl opacity-20 group-hover:scale-110 transition-transform">🧠</div>
-              <p className="font-display font-bold text-lamp-green text-4xl mb-1">
-                {stats.questionsAsked ?? "768-dim"}
-              </p>
-              <p className="font-sans text-xs text-faded-ink uppercase tracking-wider font-semibold">Gemini Vectors Indexed</p>
-            </Panel>
-          </div>
-        )}
-
-        {/* ── Features Architectural Grid ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-10">
-          <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-gold-leaf/40 transition-all">
-            <div className="w-10 h-10 rounded-xl bg-gold-leaf/20 text-gold-leaf flex items-center justify-center font-bold text-lg mb-4">
-              01
-            </div>
-            <h3 className="font-display font-semibold text-parchment text-lg mb-2">
-              Dwell Auto-Capture
-            </h3>
-            <p className="font-sans text-xs text-faded-ink leading-relaxed">
-              Extension monitors active visible dwell time (25s threshold). Clean text extracted via Mozilla Readability.
+      {/* ── MACRO HEADER REGION ── */}
+      <div className="bg-canvas border-b border-border-strong px-6 md:px-10 py-6">
+        <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="flex flex-col gap-1">
+            <h1 className="text-[28px] font-semibold text-primary tracking-tight leading-none">
+              Knowledge Engine
+            </h1>
+            <p className="text-[13px] text-secondary font-medium mt-1">
+              Personal knowledge index, continuously captured and semantically structured.
             </p>
           </div>
-
-          <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-purple-400/40 transition-all">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/20 text-purple-300 flex items-center justify-center font-bold text-lg mb-4">
-              02
+          
+          <div className="flex items-center gap-6 bg-surface border border-border px-4 py-2 rounded shadow-sm">
+            <div className="flex flex-col">
+              <span className="text-[10px] font-mono text-muted uppercase tracking-widest">Network</span>
+              <div className="flex items-center gap-1.5 text-[12px] text-primary font-mono font-medium mt-0.5">
+                <span className="text-success text-[8px]">●</span> ONLINE
+              </div>
             </div>
-            <h3 className="font-display font-semibold text-parchment text-lg mb-2">
-              Hybrid Search (RRF)
-            </h3>
-            <p className="font-sans text-xs text-faded-ink leading-relaxed">
-              Combines Postgres full-text keyword ranking with 768-dim Gemini vector similarity using Reciprocal Rank Fusion.
-            </p>
-          </div>
-
-          <div className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:border-lamp-green/40 transition-all">
-            <div className="w-10 h-10 rounded-xl bg-lamp-green/20 text-lamp-green flex items-center justify-center font-bold text-lg mb-4">
-              03
+            <div className="w-px h-6 bg-border" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-mono text-muted uppercase tracking-widest">Index Size</span>
+              <div className="text-[12px] text-primary font-mono font-medium mt-0.5">
+                {statsStatus === "success" ? stats.totalSaved ?? 0 : "—"} PAGES
+              </div>
             </div>
-            <h3 className="font-display font-semibold text-parchment text-lg mb-2">
-              Cited RAG Answers
-            </h3>
-            <p className="font-sans text-xs text-faded-ink leading-relaxed">
-              Gemini 3.6 Flash generates streaming answers strictly grounded in your saved pages with inline footnotes [1][2].
-            </p>
+            <div className="w-px h-6 bg-border" />
+            <div className="flex flex-col">
+              <span className="text-[10px] font-mono text-muted uppercase tracking-widest">Embedding</span>
+              <div className="text-[12px] text-primary font-mono font-medium mt-0.5">
+                768-DIM
+              </div>
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* ── Recently Saved Ledger Panel ── */}
-        <Panel className="p-0 overflow-hidden">
-          <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 bg-white/5">
-            <div>
-              <h2 className="font-display font-semibold text-parchment text-lg">
-                Recently Saved Knowledge
-              </h2>
-              <p className="font-sans text-xs text-faded-ink">Latest articles captured into your personal library</p>
+      {/* ── QUERY WORKSPACE ── */}
+      <div className="bg-surface border-b border-border px-6 md:px-10 py-8 relative">
+        <div className="absolute inset-0 grid-bg opacity-40 pointer-events-none" />
+        <div className="max-w-[1400px] mx-auto relative z-10 flex flex-col items-center">
+          
+          <div className="w-full max-w-3xl">
+            <div className="text-[10px] font-mono text-secondary uppercase tracking-widest font-semibold mb-2">
+              Query Workspace
             </div>
-            <Link
-              href="/history"
-              className="glass-pill px-4 py-2 text-xs font-semibold hover:bg-gold-leaf hover:text-ink transition-all"
+            
+            <form 
+              onSubmit={handleSearch} 
+              className="group border border-border-strong rounded bg-surface shadow-sm focus-within:border-accent focus-within:ring-2 focus-within:ring-accent/10 transition-all flex flex-col"
+              role="search"
             >
-              View Full History →
-            </Link>
-          </div>
-
-          <div className="p-2">
-            {recentStatus === "loading" && <RecentSkeleton />}
-
-            {recentStatus === "error" && (
-              <div className="p-6 text-center">
-                <p className="text-xs text-faded-ink mb-2">Couldn&apos;t load recent documents.</p>
+              <div className="flex items-center h-14 px-4 border-b border-border">
+                <div className="text-muted font-mono text-[14px] mr-3">↳</div>
+                <input
+                  type="search"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Query your knowledge base or synthesize an answer..."
+                  className="w-full bg-transparent text-[15px] font-medium text-primary placeholder:text-muted h-full outline-none"
+                />
+              </div>
+              
+              <div className="flex items-center justify-between px-4 py-2 bg-canvas rounded-b">
+                <div className="flex items-center gap-3 text-[11px] font-mono text-secondary">
+                  <span className="flex items-center gap-1 border border-border bg-surface px-1.5 py-0.5 rounded-sm">
+                    ⌘ K
+                  </span>
+                  <span>Hybrid RRF search active</span>
+                </div>
                 <button
-                  type="button"
-                  onClick={loadRecent}
-                  className="text-xs font-semibold text-gold-leaf hover:underline"
+                  type="submit"
+                  disabled={isSearching || !query.trim()}
+                  className="text-[11px] font-mono text-white bg-accent px-3 py-1 rounded hover:bg-accent-hover transition-colors disabled:opacity-50 disabled:hover:bg-accent flex items-center gap-2 font-medium"
                 >
-                  Retry
+                  {isSearching ? <span className="spinner border-white/30 border-t-white w-3 h-3" /> : "EXECUTE"}
                 </button>
               </div>
-            )}
+            </form>
+          </div>
 
-            {recentStatus === "empty" && (
-              <div className="p-8 text-center space-y-3">
-                <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mx-auto text-2xl">
-                  📖
-                </div>
-                <p className="font-display text-parchment text-base font-semibold">No pages saved yet</p>
-                <p className="font-sans text-xs text-faded-ink max-w-sm mx-auto">
-                  Load the Chrome extension unpacked, browse any website for 25 seconds, and your pages will automatically appear here!
-                </p>
+        </div>
+      </div>
+
+      {/* ── DATA & ARCHITECTURE REGION ── */}
+      <div className="bg-canvas flex-1 px-6 md:px-10 py-8">
+        <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10">
+          
+          {/* ── ARCHIVAL INDEX (Data Core) ── */}
+          <section className="lg:col-span-8 bg-surface border border-border rounded shadow-sm overflow-hidden flex flex-col h-[500px]">
+            <div className="px-5 py-3 border-b border-border bg-surface flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <span className="text-[11px] font-mono text-primary font-semibold uppercase tracking-widest">
+                  Archival Index
+                </span>
+                <span className="text-[10px] font-mono text-muted bg-canvas border border-border px-1.5 rounded-sm">
+                  {statsStatus === "success" ? stats.totalSaved ?? 0 : "—"} TOTAL
+                </span>
               </div>
-            )}
+              <Link href="/history" className="text-[11px] font-mono text-accent hover:text-accent-hover font-medium">
+                → OPEN ARCHIVE
+              </Link>
+            </div>
 
-            {recentStatus === "success" && (
-              <div className="space-y-1">
-                {recent.map((page) => (
-                  <div
-                    key={page.id}
-                    onClick={() => router.push(`/search?q=${encodeURIComponent(page.title)}`)}
-                    className="group cursor-pointer p-4 rounded-xl hover:bg-white/5 transition-all flex items-center justify-between gap-4 border border-transparent hover:border-white/10"
-                  >
-                    <div className="min-w-0 flex-1 flex items-start gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-gold-leaf/10 border border-gold-leaf/20 flex items-center justify-center shrink-0 text-gold-leaf group-hover:scale-110 transition-transform">
-                        📄
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-sans font-semibold text-parchment text-sm leading-snug group-hover:text-gold-leaf transition-colors truncate">
-                          {page.title}
-                        </p>
-                        <p className="font-sans text-xs text-faded-ink truncate mt-0.5">
-                          {page.url.replace(/^https?:\/\//, "")}
-                        </p>
-                      </div>
+            <div className="flex-1 overflow-y-auto bg-surface relative">
+              {recentStatus === "loading" && <div className="px-5"><RecentSkeleton /></div>}
+
+              {recentStatus === "error" && (
+                <div className="p-5 text-[12px] font-mono text-danger flex items-center justify-between">
+                  <span>× ERROR LOADING DATA</span>
+                  <button type="button" onClick={loadRecent} className="underline">Retry</button>
+                </div>
+              )}
+
+              {recentStatus === "empty" && (
+                <div className="p-10 text-center text-[12px] font-mono text-secondary">
+                  NO DOCUMENTS INDEXED
+                </div>
+              )}
+
+              {recentStatus === "success" && (
+                <table className="w-full text-left border-collapse">
+                  <thead className="sticky top-0 bg-surface border-b border-border z-10">
+                    <tr className="text-[10px] font-mono text-muted uppercase tracking-widest">
+                      <th className="font-medium py-2 px-5 w-[50%]">Document</th>
+                      <th className="font-medium py-2 px-2 w-[20%]">Origin</th>
+                      <th className="font-medium py-2 px-2 w-[15%]">Status</th>
+                      <th className="font-medium py-2 px-5 text-right w-[15%]">Time</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border text-[13px]">
+                    {recent.map((page) => {
+                      let domain = "";
+                      try { domain = new URL(page.url).hostname.replace(/^www\./, ""); } catch { domain = page.url; }
+                      
+                      return (
+                        <tr key={page.id} className="hover:bg-canvas transition-colors group cursor-pointer" onClick={() => router.push(`/search?q=${encodeURIComponent(page.title)}`)}>
+                          <td className="py-2.5 px-5 max-w-0">
+                            <div className="flex items-center gap-2 truncate">
+                              <span className="text-[10px] text-muted font-mono group-hover:text-accent transition-colors">↳</span>
+                              <span className="font-medium text-primary group-hover:text-accent transition-colors truncate">
+                                {page.title}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-2">
+                            <div className="text-[11px] font-mono text-secondary truncate">
+                              {domain}
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-2">
+                            <div className="flex items-center gap-1.5 text-[10px] font-mono text-secondary">
+                              <span className="text-accent">✓</span> INDEXED
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-5 text-right">
+                            <div className="text-[11px] font-mono text-muted">
+                              {relativeTime(page.created_at)}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </section>
+
+          {/* ── SYSTEM ARCHITECTURE (Sidebar) ── */}
+          <aside className="lg:col-span-4 flex flex-col gap-6">
+            
+            {/* Pipeline Panel */}
+            <div className="bg-surface border border-border rounded shadow-sm">
+              <div className="px-5 py-3 border-b border-border bg-canvas">
+                <span className="text-[11px] font-mono text-primary font-semibold uppercase tracking-widest">
+                  Processing Pipeline
+                </span>
+              </div>
+              <div className="p-5">
+                <div className="space-y-4">
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded border border-border-strong bg-canvas flex items-center justify-center text-[10px] font-mono text-primary shrink-0">
+                      01
                     </div>
-
-                    <div className="flex items-center gap-4 shrink-0">
-                      <span className="font-sans text-xs text-faded-ink bg-white/5 px-2.5 py-1 rounded-md border border-white/5">
-                        {relativeTime(page.created_at)}
-                      </span>
-                      <span className="text-gold-leaf text-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                        →
-                      </span>
+                    <div className="pt-0.5 pb-3 border-b border-border w-full">
+                      <div className="text-[12px] font-semibold text-primary mb-0.5">CAPTURE</div>
+                      <div className="text-[11px] font-mono text-secondary">25s passive dwell validation</div>
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </Panel>
 
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded border border-border-strong bg-canvas flex items-center justify-center text-[10px] font-mono text-primary shrink-0">
+                      02
+                    </div>
+                    <div className="pt-0.5 pb-3 border-b border-border w-full">
+                      <div className="text-[12px] font-semibold text-primary mb-0.5">INDEX</div>
+                      <div className="text-[11px] font-mono text-secondary">768-dim embeddings + keywords</div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <div className="w-6 h-6 rounded border border-border-strong bg-canvas flex items-center justify-center text-[10px] font-mono text-primary shrink-0">
+                      03
+                    </div>
+                    <div className="pt-0.5 w-full">
+                      <div className="text-[12px] font-semibold text-primary mb-0.5">SYNTHESIZE</div>
+                      <div className="text-[11px] font-mono text-secondary">Grounded LLM generation</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Health Panel */}
+            <div className="bg-surface border border-border rounded shadow-sm">
+              <div className="px-5 py-3 border-b border-border bg-canvas flex items-center justify-between">
+                <span className="text-[11px] font-mono text-primary font-semibold uppercase tracking-widest">
+                  Subsystem Health
+                </span>
+                <span className="flex items-center gap-1.5 text-[10px] font-mono text-success">
+                  ● ACTIVE
+                </span>
+              </div>
+              <div className="p-4 flex flex-col gap-2 text-[11px] font-mono">
+                <div className="flex items-center justify-between px-2 py-1.5 rounded bg-canvas border border-border">
+                  <span className="text-secondary">pgvector cluster</span>
+                  <span className="text-primary font-medium">✓</span>
+                </div>
+                <div className="flex items-center justify-between px-2 py-1.5 rounded bg-canvas border border-border">
+                  <span className="text-secondary">llm endpoint</span>
+                  <span className="text-primary font-medium">✓</span>
+                </div>
+                <div className="flex items-center justify-between px-2 py-1.5 rounded bg-canvas border border-border">
+                  <span className="text-secondary">extension bridge</span>
+                  <span className="text-primary font-medium">○ PROCESSING</span>
+                </div>
+              </div>
+            </div>
+
+          </aside>
+
+        </div>
       </div>
+
     </div>
   );
 }

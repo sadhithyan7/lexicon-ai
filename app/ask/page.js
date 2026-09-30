@@ -127,42 +127,42 @@ function AskPageInner() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="flex flex-col h-screen max-w-5xl mx-auto p-4 md:p-8">
-      {/* ── Glass Top Header ── */}
-      <div className="glass-canvas rounded-2xl px-6 py-4 mb-4 flex items-center justify-between border border-white/15 shrink-0">
+    <div className="flex flex-col h-screen max-w-[1200px] mx-auto p-4 md:p-10">
+      {/* ── Editorial Masthead Header ── */}
+      <div className="mb-6 border-b border-white/10 pb-6 flex items-center justify-between shrink-0">
         <div>
-          <h1 className="font-display font-bold text-parchment text-2xl flex items-center gap-2">
+          <h1 className="font-display font-medium text-parchment text-3xl flex items-center gap-4">
             <span>Ask RAG Studio</span>
-            <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-gold-leaf/20 text-gold-leaf border border-gold-leaf/30">
+            <span className="text-[10px] font-mono font-bold px-2 py-1 bg-gold-leaf/10 text-gold-leaf border border-gold-leaf/20 uppercase tracking-widest">
               Gemini 3.6 Flash
             </span>
           </h1>
-          <p className="font-sans text-xs text-faded-ink">
-            Grounded answers generated exclusively from your saved articles & vector embeddings.
+          <p className="font-sans text-xs text-faded-ink mt-2 uppercase tracking-widest">
+            Grounded answers generated exclusively from your saved articles
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="w-2.5 h-2.5 rounded-full bg-lamp-green animate-pulse" />
-          <span className="text-xs font-mono text-lamp-green font-semibold">Citations Active</span>
+        <div className="flex items-center gap-2 border border-lamp-green/20 bg-lamp-green/5 px-3 py-1.5">
+          <span className="w-1.5 h-1.5 bg-lamp-green animate-pulse" />
+          <span className="text-[10px] font-mono text-lamp-green font-bold uppercase tracking-widest">Citations Active</span>
         </div>
       </div>
 
       {/* ── Chat Messages Container ── */}
-      <div className="glass-canvas rounded-3xl flex-1 overflow-y-auto p-6 md:p-8 space-y-6 border border-white/10 relative">
+      <div className="bg-canvas flex-1 overflow-y-auto p-6 md:p-10 space-y-8 border border-white/10 relative">
         {isEmpty && !sending && (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-gold-leaf to-amber-300 text-ink flex items-center justify-center text-3xl shadow-xl shadow-gold-leaf/20 mb-4 animate-bounce">
-              💬
+            <div className="w-16 h-16 border border-white/10 text-faded-ink flex items-center justify-center text-2xl mb-6 font-display italic">
+              A
             </div>
-            <h2 className="font-display font-bold text-parchment text-2xl mb-2">
+            <h2 className="font-display font-medium text-parchment text-3xl mb-3">
               Start a Grounded Conversation
             </h2>
-            <p className="font-sans text-xs text-faded-ink max-w-md mb-8">
+            <p className="font-sans text-sm text-faded-ink max-w-md mb-10 leading-relaxed">
               Ask any question, request a summary, or perform deep synthesis across your saved library.
             </p>
 
-            <div className="flex flex-wrap items-center justify-center gap-3 max-w-xl">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 w-full max-w-3xl">
               {[
                 "Summarize what I saved about Nuclear weapons",
                 "What are React Hooks and why use them?",
@@ -177,9 +177,10 @@ function AskPageInner() {
                     setInput("");
                     sendQuestion(sample, [userMsg]);
                   }}
-                  className="glass-pill px-4 py-2.5 text-xs text-left font-medium hover:scale-105 transition-all"
+                  className="p-4 border border-white/10 hover:border-gold-leaf/40 bg-white/[0.02] text-xs text-left font-sans text-parchment transition-colors h-full flex flex-col justify-between group"
                 >
-                  &ldquo;{sample}&rdquo; →
+                  <span className="mb-4 leading-relaxed">&ldquo;{sample}&rdquo;</span>
+                  <span className="text-gold-leaf opacity-0 group-hover:opacity-100 transition-opacity font-mono text-[10px] uppercase tracking-widest">Select →</span>
                 </button>
               ))}
             </div>
@@ -222,8 +223,8 @@ function AskPageInner() {
       </div>
 
       {/* ── Sticky Input Footer Bar ── */}
-      <div className="mt-4 shrink-0">
-        <form onSubmit={handleSend} className="flex gap-3">
+      <div className="mt-6 shrink-0">
+        <form onSubmit={handleSend} className="flex gap-4">
           <input
             ref={inputRef}
             type="text"
@@ -237,11 +238,11 @@ function AskPageInner() {
             disabled={sending}
             autoComplete="off"
             className="
-              flex-1 bg-[#181424]/90 border border-white/20
+              flex-1 bg-canvas border border-white/20
               text-parchment placeholder:text-faded-ink/60
-              font-sans text-sm md:text-base px-5 py-4 rounded-2xl
-              focus:border-gold-leaf focus:ring-4 focus:ring-gold-leaf/15
-              transition-all shadow-xl
+              font-sans text-sm md:text-base px-6 py-4
+              focus:border-gold-leaf focus:outline-none focus:bg-white/[0.02]
+              transition-colors
               disabled:opacity-60
             "
           />
@@ -249,13 +250,13 @@ function AskPageInner() {
             type="submit"
             disabled={sending || !input.trim()}
             className="
-              bg-gradient-to-r from-gold-leaf to-amber-400 text-ink
-              font-sans font-bold text-sm px-7 py-4 rounded-2xl
-              hover:shadow-lg hover:shadow-gold-leaf/30 transition-all shrink-0
-              disabled:opacity-50
+              bg-white/10 text-parchment border border-white/20
+              font-mono font-bold text-[11px] uppercase tracking-[0.2em] px-8 py-4
+              hover:border-gold-leaf/50 hover:text-gold-leaf transition-colors shrink-0
+              disabled:opacity-50 disabled:hover:border-white/20 disabled:hover:text-parchment
             "
           >
-            {sending ? <span className="spinner" /> : "Ask AI"}
+            {sending ? <span className="spinner" /> : "Query"}
           </button>
         </form>
       </div>
@@ -267,9 +268,9 @@ export default function AskPage() {
   return (
     <Suspense
       fallback={
-        <div className="p-8 max-w-4xl mx-auto space-y-4">
-          <div className="skeleton h-12 w-full rounded-2xl" />
-          <div className="skeleton h-96 w-full rounded-3xl" />
+        <div className="p-8 max-w-[1200px] mx-auto space-y-4">
+          <div className="skeleton h-12 w-full border border-white/10 bg-canvas" />
+          <div className="skeleton h-96 w-full border border-white/10 bg-canvas" />
         </div>
       }
     >
@@ -280,9 +281,14 @@ export default function AskPage() {
 
 function UserBubble({ text }) {
   return (
-    <div className="flex justify-end">
-      <div className="max-w-[80%] px-5 py-3.5 rounded-2xl bg-gradient-to-tr from-[#2A2438] to-[#201D2C] border border-white/15 text-parchment text-sm leading-relaxed shadow-lg">
-        {text}
+    <div className="flex justify-end mb-8">
+      <div className="max-w-[80%] md:max-w-[70%]">
+        <div className="text-[10px] font-mono font-bold text-faded-ink uppercase tracking-widest text-right mb-2">
+          User Query
+        </div>
+        <div className="px-6 py-4 bg-white/5 border border-white/10 text-parchment font-sans text-sm md:text-base leading-relaxed">
+          {text}
+        </div>
       </div>
     </div>
   );
@@ -290,13 +296,13 @@ function UserBubble({ text }) {
 
 function AssistantAnswer({ segments, citations }) {
   return (
-    <div className="p-6 rounded-2xl bg-white/5 border border-white/10 space-y-4">
-      <div className="flex items-center gap-2 text-xs font-mono text-gold-leaf">
-        <span>🤖</span>
-        <span>Grounded Answer</span>
+    <div className="mb-8">
+      <div className="flex items-center gap-3 mb-4 text-[10px] font-mono font-bold text-gold-leaf uppercase tracking-widest">
+        <div className="w-2 h-2 bg-gold-leaf" />
+        <span>Grounded Response</span>
       </div>
 
-      <div className="font-sans text-parchment text-sm leading-relaxed">
+      <div className="pl-5 md:pl-8 border-l border-white/10 font-sans text-parchment text-sm md:text-base leading-[1.8] max-w-4xl">
         <SegmentRenderer segments={segments} />
       </div>
 
@@ -321,7 +327,7 @@ function SegmentRenderer({ segments }) {
           <sup key={i} className="mx-1">
             <a
               href={`#citation-${seg.n}`}
-              className="px-1.5 py-0.5 rounded bg-lamp-green/20 text-lamp-green font-mono font-bold text-[0.75rem] border border-lamp-green/30 hover:bg-lamp-green hover:text-ink transition-all"
+              className="px-1.5 py-px border border-lamp-green/30 text-lamp-green font-mono font-bold text-[10px] hover:bg-lamp-green hover:text-ink transition-colors"
             >
               [{seg.n}]
             </a>
@@ -334,36 +340,40 @@ function SegmentRenderer({ segments }) {
 
 function SourcesBlock({ citations }) {
   return (
-    <div className="pt-4 border-t border-white/10">
-      <p className="font-sans text-xs uppercase tracking-wider text-faded-ink font-semibold mb-3">
-        Cited Sources ({citations.length})
+    <div className="mt-8 pt-6 border-t border-white/10 max-w-4xl">
+      <p className="font-sans text-[10px] uppercase tracking-widest text-faded-ink font-bold mb-4">
+        References — Index ({citations.length})
       </p>
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {citations.map((src) => (
           <div
             key={src.number}
             id={`citation-${src.number}`}
-            className="p-3 rounded-xl bg-black/20 border border-white/5 flex items-center justify-between text-xs gap-3"
+            className="p-4 border border-white/10 flex flex-col justify-between gap-3 bg-white/[0.02]"
           >
-            <div className="flex items-center gap-2 truncate">
-              <span className="font-mono text-gold-leaf font-bold">[{src.number}]</span>
+            <div className="flex items-start gap-3 min-w-0">
+              <span className="font-mono text-[10px] text-gold-leaf font-bold mt-1">
+                [{src.number.toString().padStart(2, '0')}]
+              </span>
               <a
                 href={src.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-parchment hover:text-gold-leaf truncate font-medium"
+                className="font-display text-parchment text-sm hover:text-gold-leaf transition-colors leading-snug line-clamp-2"
               >
                 {src.title}
               </a>
             </div>
-            <a
-              href={src.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-lamp-green hover:underline font-mono shrink-0"
-            >
-              Open Link ↗
-            </a>
+            <div className="pl-7">
+                <a
+                  href={src.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-lamp-green font-mono uppercase tracking-widest hover:underline"
+                >
+                  Source ↗
+                </a>
+            </div>
           </div>
         ))}
       </div>
@@ -373,10 +383,10 @@ function SourcesBlock({ citations }) {
 
 function ThinkingIndicator() {
   return (
-    <div className="p-4 rounded-xl bg-white/5 border border-white/10 flex items-center gap-3 text-gold-leaf">
-      <span className="spinner" />
-      <span className="font-sans text-xs font-medium animate-pulse">
-        Gemini is retrieving context & generating grounded answer...
+    <div className="pl-5 md:pl-8 border-l border-white/10 flex items-center gap-4 text-gold-leaf py-4">
+      <span className="spinner w-4 h-4" />
+      <span className="font-mono text-[10px] font-bold uppercase tracking-widest animate-pulse">
+        Synthesizing Grounded Answer...
       </span>
     </div>
   );
@@ -384,11 +394,11 @@ function ThinkingIndicator() {
 
 function ErrorBubble({ error, onRetry }) {
   return (
-    <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-xs flex items-center justify-between">
-      <span>{error}</span>
+    <div className="p-4 border border-danger/30 bg-danger/5 text-danger font-sans text-sm flex flex-col md:flex-row md:items-center justify-between gap-4 max-w-4xl">
+      <span><strong className="font-mono text-[10px] uppercase tracking-widest mr-2">Error:</strong>{error}</span>
       <button
         onClick={onRetry}
-        className="font-semibold text-gold-leaf hover:underline ml-4 shrink-0"
+        className="font-mono text-[10px] font-bold uppercase tracking-widest text-parchment border border-white/20 px-3 py-1.5 hover:bg-white/10 transition-colors shrink-0"
       >
         Retry
       </button>

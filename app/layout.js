@@ -1,4 +1,4 @@
-import { Fraunces, IBM_Plex_Sans } from "next/font/google";
+import { Inter, IBM_Plex_Mono } from "next/font/google";
 import Sidebar from "@/components/Sidebar";
 import "./globals.css";
 
@@ -18,26 +18,24 @@ if (typeof window === "undefined") {
   }
 }
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  axes: ["SOFT", "WONK"],
-  weight: "variable",
   display: "swap",
 });
 
-const ibmPlexSans = IBM_Plex_Sans({
-  variable: "--font-ibm-plex-sans",
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
+  weight: ["400", "500", "600"],
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600"],
   display: "swap",
 });
 
 export const metadata = {
-  title: "Lexicon AI — Your Personal Knowledge Library",
+  title: "Lexicon AI — Personal Knowledge Engine",
   description: "Save and semantically search everything you read",
   openGraph: {
-    title: "Lexicon AI — Your Personal Knowledge Library",
+    title: "Lexicon AI — Personal Knowledge Engine",
     description: "Save and semantically search everything you read",
     url: "https://lexicon-portfolio.vercel.app",
     siteName: "Lexicon",
@@ -51,23 +49,15 @@ export default function RootLayout({ children }) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${fraunces.variable} ${ibmPlexSans.variable} h-full antialiased`}
+      className={`${inter.variable} ${plexMono.variable} h-full antialiased`}
     >
       <head>
         <link rel="icon" href="/favicon.ico" />
       </head>
-      <body className="min-h-full bg-ink text-parchment relative">
-        {/* Ambient atmospheric glows */}
-        <div className="fixed top-[-10%] left-[20%] w-[500px] h-[500px] bg-gold-leaf/10 rounded-full blur-[120px] pointer-events-none z-0" />
-        <div className="fixed bottom-[-10%] right-[10%] w-[600px] h-[600px] bg-purple-600/10 rounded-full blur-[140px] pointer-events-none z-0" />
-        <div className="fixed top-[40%] right-[30%] w-[400px] h-[400px] bg-lamp-green/10 rounded-full blur-[100px] pointer-events-none z-0" />
-
+      <body className="min-h-full bg-canvas text-primary relative font-sans">
         <div className="flex min-h-screen relative z-10">
           <Sidebar />
-          <main
-            className="flex-1 min-h-screen overflow-y-auto"
-            style={{ marginLeft: "240px" }}
-          >
+          <main className="flex-1 min-h-screen overflow-y-auto md:ml-[240px]">
             {children}
           </main>
         </div>
